@@ -1,0 +1,40 @@
+{
+  "name": "firebase-client",
+  "version": "1.0.0",
+  "description": "A client for working with Firebase",
+  "main": "index.js",
+  "scripts": {
+    "build": "webpack --config webpack.dev.js",
+    "start-dev-server": "webpack-dev-server --config webpack.dev.js",
+    "start-electron": "electron dist"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@babel/core": "^7.4.3",
+    "@babel/preset-env": "^7.4.3",
+    "@babel/preset-typescript": "^7.3.3",
+    "babel": "^6.23.0",
+    "babel-loader": "^8.0.5",
+    "copy-webpack-plugin": "^5.0.2",
+    "css-loader": "^2.1.1",
+    "electron": "^4.0.0",
+    "html-webpack-plugin": "^3.2.0",
+    "node-sass": "^4.11.0",
+    "sass-loader": "^7.1.0",
+    "vue-loader": "^15.7.0",
+    "vue-template-compiler": "^2.6.10",
+    "webpack": "^4.30.0",
+    "webpack-cli": "^3.3.0",
+    "webpack-dev-server": "^3.3.1"
+  },
+  "dependencies": {
+    "@google-cloud/firestore": "^1.2.0",
+    "dotenv": "^7.0.0",
+    "firebase": "^5.9.4",
+    "firebase-admin": "^7.3.0",
+    "milligram": "^1.3.0",
+    "sanitize.css": "^8.0.0",
+    "vue": "^2.6.10"
+  }
+}

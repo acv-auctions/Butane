@@ -1,0 +1,66 @@
+@import "~milligram/src/Color";
+@import "../variables";
+
+/* Customize website's scrollbar like Mac OS
+Not supports in Firefox and IE */
+
+/* total width */
+body::-webkit-scrollbar {
+  background-color:#fff;
+  width:16px
+}
+
+/* Turn on custom 8px wide scrollbar */
+::-webkit-scrollbar {
+  width: 8px; /* 1px wider than Lion. */
+  /* This is more usable for users trying to click it. */
+  background-color: rgba(0,0,0,0);
+  -webkit-border-radius: 100px;
+}
+/* hover effect for both scrollbar area, and scrollbar 'thumb' */
+::-webkit-scrollbar:hover {
+  background-color: rgba(0, 0, 0, 0.09);
+}
+
+/* The scrollbar 'thumb' ...that marque oval shape in a scrollbar */
+::-webkit-scrollbar-thumb:vertical {
+  /* This is the EXACT color of Mac OS scrollbars.
+     Yes, I pulled out digital color meter */
+  background: rgba(0,0,0,0.5);
+  -webkit-border-radius: 100px;
+}
+::-webkit-scrollbar-thumb:vertical:active {
+  background: rgba(0,0,0,0.61); /* Some darker color when you click it */
+  -webkit-border-radius: 100px;
+}
+
+.main-container {
+  height: 100vh;
+  padding: 10px;
+
+  display: flex;
+  flex-direction: column;
+
+  .list-container {
+
+    border: 1px solid #f0f0f0;
+    border-radius: 7px;
+    flex: 1;
+
+    overflow: auto;
+  }
+
+  ul.styled {
+    list-style: none;
+
+    li {
+      padding: 5px 10px;
+
+      &:hover {
+        background: $color-primary;
+        color: #fff;
+        cursor: pointer;
+      }
+    }
+  }
+}
