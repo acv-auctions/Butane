@@ -1,0 +1,46 @@
+@import "~milligram/src/Color";
+
+.document-wrapper, .background-container {
+  position: fixed;
+  left: 0;
+  top: 0;
+}
+
+.document-wrapper {
+
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  .background-container {
+    width: 100vw;
+    height: 100vh;
+    background: rgba(255, 255, 255, 0.7);
+  }
+
+  .content-container {
+    z-index: 1;
+    max-width: 1000px;
+    width: 75vw;
+    height: 75vh;
+    background: #fff;
+    border: 1px solid $color-primary;
+    border-radius: 5px;
+    display: flex;
+
+    .selection {
+      width: 30%;
+      border-right: 1px solid $color-primary;
+      overflow: auto;
+    }
+
+    .view {
+      flex: 1;
+      padding-left: 10px;
+      overflow: auto;
+    }
+  }
+
+}

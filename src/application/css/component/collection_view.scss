@@ -1,0 +1,23 @@
+.collection-wrapper {
+  flex: 1;
+  display: flex;
+
+  .collection {
+    width: 300px;
+    margin-bottom: 10px;
+
+    display: flex;
+    flex-direction: column;
+
+    header {
+
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      h3 {
+        margin-bottom: 5px;
+      }
+    }
+  }
+}
