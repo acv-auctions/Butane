@@ -27,7 +27,10 @@
     </section>
 </template>
 
-<script>
+<script lang="ts">
+
+    import JSONFormatter from "json-formatter-js";
+
     export default {
         name: "DocumentView",
         props: ["documents"],
@@ -44,6 +47,17 @@
 
             onItemClick: function(index) {
                 this.selectedIndex = index;
+                this.$refs['view-container'].scrollTo({ top: 0, behavior: 'smooth' });
+            },
+
+            getDocumentValueByKey: function(key) {
+                return this.documents[this.selectedIndex].payload[key]
+            },
+
+            renderObjectTree: function(key) {
+                const val = this.getDocumentValueByKey(key);
+                const formatter = new JSONFormatter(val, Infinity);
+                return formatter.render().outerHTML;
             }
         }
     }
