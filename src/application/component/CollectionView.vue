@@ -1,6 +1,6 @@
 <template>
     <section class="collection-wrapper">
-        <div v-for="(collection, index) in collections" class="collection">
+        <div v-for="(collection, index) in collections" class="collection animate-fade-in-right">
             <header>
                 <h3>{{collection.id}}</h3>
             </header>

@@ -36,11 +36,15 @@ body::-webkit-scrollbar {
 
 .main-container {
   height: 100vh;
-  padding: 10px;
+  padding: $main-container-padding;
+  overflow: hidden;
 
-  display: flex;
-  flex-direction: column;
+  .main-content {
+    position: relative;
+    height: calc(100vh - #{$main-container-padding * 2} - #{$terminal-container-height})
+  }
 
+  // TODO Should probably be elsewhere...
   .list-container {
 
     border: 1px solid #f0f0f0;
@@ -55,6 +59,12 @@ body::-webkit-scrollbar {
 
     li {
       padding: 5px 10px;
+      margin: 0;
+
+      &.selected {
+        background: rgb(195, 76, 184);
+        color: #fff
+      }
 
       &:hover {
         background: $color-primary;
