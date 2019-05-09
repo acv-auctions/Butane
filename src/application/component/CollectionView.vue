@@ -30,7 +30,7 @@
 
             this.collections.push({
                 type: CollectionType.COLLECTION,
-                id: "Root Collections",
+                id: "Root",
                 list: collections.map(reference => {
                     return reference._path.relativeName;
                 })
