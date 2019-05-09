@@ -1,11 +1,13 @@
 <template>
     <div class="main-container">
-        <collection-view @documentSelected="onCollectionItemClick"></collection-view>
-        <template v-if="documents.length">
-            <document-view :documents="documents" @dismissDocumentView="onDismissDocumentView"></document-view>
-        </template>
+        <div class="main-content">
+            <collection-view @documentSelected="onCollectionItemClick"></collection-view>
+            <template v-if="documents.length">
+                <document-view :documents="documents" @dismissDocumentView="onDismissDocumentView"></document-view>
+            </template>
+        </div>
         <section class="query-wrapper">
-            <term-input @querySubmit="onQuerySubmission" />
+            <term-input v-bind:is-disabled="querySubmitted" @querySubmit="onQuerySubmission" />
         </section>
     </div>
 </template>
@@ -25,7 +27,8 @@
         },
         data: function() {
             return {
-                documents: []
+                documents: [],
+                querySubmitted: false
             }
         },
         methods: {
@@ -34,12 +37,31 @@
 
                 let querySnapshot;
 
+                this.querySubmitted = true;
+
                 try {
                     const firebase = this.$root.firebase;
 
                     querySnapshot = await FirebaseSQL(query, firebase.firestore());
                 } catch (e) {
-                    console.error(e);
+
+                    const { code } = e;
+
+                    if(code === 9) {
+                        const splitPoint = e.details.indexOf(":") + 1;
+                        const indexCreationLink = e.details.substr(splitPoint).trim();
+                        console.info(indexCreationLink);
+                    } else {
+                        console.error(e);
+                    }
+
+                    return;
+                } finally {
+                    this.querySubmitted = false;
+                }
+
+                // It's possible that
+                if(!querySnapshot) {
                     return;
                 }
 
