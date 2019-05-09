@@ -1,6 +1,6 @@
 export enum CollectionType {
-    COLLECTION,
-    DOCUMENTS
+    COLLECTION = "COLLECTION",
+    DOCUMENTS = "DOCUMENTS"
 }
 
 export interface CollectionWrapper {
