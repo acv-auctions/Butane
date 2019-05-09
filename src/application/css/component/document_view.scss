@@ -1,26 +1,24 @@
 @import "~milligram/src/Color";
 
 .document-wrapper, .background-container {
-  position: fixed;
+  width: 100%;
+  height: 100%;
+  position: absolute;
   left: 0;
   top: 0;
 }
 
 .document-wrapper {
-
-  width: 100vw;
-  height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
 
   .background-container {
-    width: 100vw;
-    height: 100vh;
     background: rgba(255, 255, 255, 0.7);
   }
 
   .content-container {
+    box-shadow: -60px 0px 100px -90px #704f9d, 60px 0px 100px -90px #704f9d;
     z-index: 1;
     max-width: 1000px;
     width: 75vw;

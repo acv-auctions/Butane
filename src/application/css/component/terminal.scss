@@ -1,7 +1,7 @@
 @import "../variables";
 
 .terminal-container {
-  height: 65px;
+  height: #{$terminal-container-height};
   display: flex;
 
   textarea {

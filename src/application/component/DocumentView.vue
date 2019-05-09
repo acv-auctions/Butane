@@ -1,23 +1,23 @@
 <template>
     <section class="document-wrapper">
         <div @click="dissmiss" class="background-container"></div>
-        <div class="content-container">
+        <div class="content-container animate-fade-in-up">
             <div class="selection">
                 <ul class="styled">
-                    <li v-for="(doc, index) in documents" v-on:click="onItemClick(index)">
+                    <li v-bind:class="{ selected: selectedIndex === index }"
+                        v-for="(doc, index) in documents"
+                        v-on:click="onItemClick(index)">
                         {{ doc.id }}
                     </li>
                 </ul>
             </div>
-            <div class="view">
+            <div ref="view-container" class="view">
                 <table>
                     <tbody>
-                    <tr v-for="key in Object.keys(documents[selectedIndex].payload)">
+                    <tr v-for="key in Object.keys(documents[selectedIndex].payload).sort((a, b) =>  { return a.localeCompare(b) })">
                         <td>
                             <h4>{{key}}</h4>
-                            <blockquote>
-                                {{ documents[selectedIndex].payload[key] }}
-                            </blockquote>
+                            <div v-html="renderObjectTree(key)"></div>
                         </td>
                     </tr>
                     </tbody>
