@@ -1,0 +1,36 @@
+@import "~milligram/src/Color";
+@import "../variables";
+
+.main-container {
+  height: calc(100vh - #{$tab-bar-container-height});
+  width: 100vw;
+  padding: $main-container-padding;
+  overflow: hidden;
+  background: #fff;
+
+  .main-content {
+    position: relative;
+
+    // The only reason a height is calculated is because, without a specified height, container columns won't fill.
+    height: calc(100vh - #{$main-container-padding * 2} - #{$terminal-container-height} - #{$notification-container-height} - #{$tab-bar-container-height})
+  }
+
+  .query-notification-container {
+
+    display: flex;
+    align-items: center;
+    height: $notification-container-height;
+
+    span {
+
+      &.error {
+        color: #ff2320; // TODO make variable
+      }
+
+      .success {
+        color: #39ba37;
+      }
+
+    }
+  }
+}

@@ -39,6 +39,11 @@
                 selectedIndex: 0
             }
         },
+        watch: {
+            documents: function(newVal, oldVal) {
+                this.selectedIndex = 0;
+            }
+        },
         methods: {
 
             dissmiss: function() {

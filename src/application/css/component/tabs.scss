@@ -1,0 +1,35 @@
+@import "../variables";
+@import "~milligram/src/Color";
+
+.tabs-container {
+
+  .tab-bar {
+    height: $tab-bar-container-height;
+    padding: 5px 15px 0 15px;
+    background: #414141;
+
+    .tab {
+      background: $color-primary;
+      border-radius: 10px 10px 0 0;
+      max-width: 200px;
+      text-align: center;
+      height: 100%;
+      color: #fff;
+    }
+  }
+
+  .tab-content {
+    height: calc(100vh - #{$tab-bar-container-height});
+    flex-direction: column;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #f0f0f0;
+
+    .error {
+      text-align: center;
+      width: 400px;
+      color: #ff2320; // TODO make variable
+    }
+  }
+}

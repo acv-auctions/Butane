@@ -1,6 +1,6 @@
 <template>
     <div class="terminal-container">
-        <textarea v-on:keypress="onTextAreaKeyPress" v-model="queryModel"></textarea>
+        <textarea ref="termtext" v-bind:disabled="isDisabled" v-on:keypress="onTextAreaKeyPress" v-model="queryModel"></textarea>
         <button v-bind:disabled="isDisabled" v-on:click="submitQuery" class="button">
             {{ isDisabled ? "Loading" : "Submit" }}
         </button>
@@ -14,6 +14,16 @@
         data: () => {
             return {
                 queryModel: ""
+            }
+        },
+        watch: {
+            "isDisabled": function(oldVal, newVal) {
+                if(newVal) {
+                    // Prop changes occur before the view has re-rendered. In this case, set a timeout.
+                    window.setTimeout(() => {
+                        this.$refs["termtext"].focus();
+                    }, 100);
+                }
             }
         },
         methods: {
