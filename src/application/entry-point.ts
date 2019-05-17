@@ -1,13 +1,10 @@
 import Vue from "vue";
-import App from "./component/App";
-import { remote } from "electron";
+import Tabs from "./component/Tabs";
 
-import "./css/main.scss";
+import "./css/index.scss";
 
 new Vue({
-    data: {
-        firebase: remote.getGlobal("firebaseApp")
-    },
+    data: {},
     el: "#entry",
-    render: h => h(App)
+    render: h => h(Tabs)
 });

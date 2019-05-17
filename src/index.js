@@ -1,38 +1,44 @@
-const { BrowserWindow, app } = require("electron");
+const { BrowserWindow, app, dialog } = require("electron");
 const firebaseAdmin = require("firebase-admin");
 
 require("dotenv").config();
 
-// TODO Make configurable
-global.firebaseApp = firebaseAdmin.initializeApp({
-    credential: firebaseAdmin.credential.cert(require("C:\\Users\\SomeGuyFromMontana\\Documents\\TrueFrame Projects\\firebase-client\\service-account-credentials\\dev-fire-key.json")),
-    databaseURL: "https://true-frame-v2.firebaseio.com",
-    projectId: "true-frame-v2",
-    storageBucket: "true-frame-v2.appspot.com"
-});
+const fireInstances = {};
 
-let win = null;
+global.createFirebaseInstance = async (path, name) => {
 
-function createWindow () {
-    win = new BrowserWindow({
+    if(fireInstances[name]) {
+        fireInstances[name].delete();
+    }
+
+    fireInstances[name] = firebaseAdmin.initializeApp({
+        credential: firebaseAdmin.credential.cert(require(path)),
+    }, `${name}`);
+
+    return fireInstances[name];
+};
+
+let mainWindow = null;
+
+function createMainWindow () {
+    mainWindow = new BrowserWindow({
         width: 800,
         height: 600,
     });
 
     if(process.env.ENVIRONMENT === "development") {
-        win.loadURL(`http://localhost:9000`);
+        mainWindow.loadURL(`http://localhost:9000`);
+        mainWindow.webContents.openDevTools({ mode: "undocked" });
     } else {
-        win.loadURL(`file://${__dirname}/index.html`);
+        mainWindow.loadURL(`file://${__dirname}/index.html`);
     }
 
-    win.webContents.openDevTools({ mode: "undocked" });
-
-    win.on('closed', () => {
-        win = null
+    mainWindow.on('closed', () => {
+        mainWindow = null
     });
 }
 
-app.on('ready', createWindow);
+app.on('ready', createMainWindow);
 
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
@@ -41,7 +47,7 @@ app.on('window-all-closed', () => {
 });
 
 app.on('activate', () => {
-    if (win === null) {
-        createWindow();
+    if (mainWindow === null) {
+        createMainWindow();
     }
 });

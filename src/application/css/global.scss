@@ -1,6 +1,3 @@
-@import "~milligram/src/Color";
-@import "../variables";
-
 /* Customize website's scrollbar like Mac OS
 Not supports in Firefox and IE */
 
@@ -32,45 +29,4 @@ body::-webkit-scrollbar {
 ::-webkit-scrollbar-thumb:vertical:active {
   background: rgba(0,0,0,0.61); /* Some darker color when you click it */
   -webkit-border-radius: 100px;
-}
-
-.main-container {
-  height: 100vh;
-  padding: $main-container-padding;
-  overflow: hidden;
-
-  .main-content {
-    position: relative;
-    height: calc(100vh - #{$main-container-padding * 2} - #{$terminal-container-height})
-  }
-
-  // TODO Should probably be elsewhere...
-  .list-container {
-
-    border: 1px solid #f0f0f0;
-    border-radius: 7px;
-    flex: 1;
-
-    overflow: auto;
-  }
-
-  ul.styled {
-    list-style: none;
-
-    li {
-      padding: 5px 10px;
-      margin: 0;
-
-      &.selected {
-        background: rgb(195, 76, 184);
-        color: #fff
-      }
-
-      &:hover {
-        background: $color-primary;
-        color: #fff;
-        cursor: pointer;
-      }
-    }
-  }
 }

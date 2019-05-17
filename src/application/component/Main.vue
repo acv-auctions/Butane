@@ -1,12 +1,17 @@
 <template>
     <div class="main-container">
         <div class="main-content">
-            <collection-view @documentSelected="onCollectionItemClick"></collection-view>
-            <template v-if="documents.length">
-                <document-view :documents="documents" @dismissDocumentView="onDismissDocumentView"></document-view>
-            </template>
+            <collection-view v-bind:firebase="firebase" @documentSelected="onCollectionItemClick"></collection-view>
+            <document-view v-if="documents.length" :documents="documents" @dismissDocumentView="onDismissDocumentView"></document-view>
         </div>
-        <section class="query-wrapper">
+        <section>
+            <div class="query-notification-container">
+                <strong>Status:</strong>&nbsp;
+                <span v-if="!querySubmitted && queryError" v-html="queryError" class="error"></span>
+                <span v-if="!querySubmitted && querySuccess" v-html="querySuccess"></span>
+                <span v-if="querySubmitted">Query submitted - waiting for response...</span>
+                <span v-if="!querySubmitted && !querySuccess && !queryError">Waiting...</span>
+            </div>
             <term-input v-bind:is-disabled="querySubmitted" @querySubmit="onQuerySubmission" />
         </section>
     </div>
@@ -19,30 +24,33 @@
     import DocumentView from "./DocumentView";
 
     export default {
-        name: "App",
+        name: "Main",
         components: {
             'document-view': DocumentView,
             'collection-view': CollectionView,
             'term-input': Terminal
         },
+        props: ["firebase"],
         data: function() {
             return {
                 documents: [],
-                querySubmitted: false
+                querySubmitted: false,
+                queryError: null,
+                querySuccess: null
             }
         },
         methods: {
 
             onQuerySubmission: async function(query) {
 
-                let querySnapshot;
+                let docs;
 
                 this.querySubmitted = true;
+                this.queryError = null;
+                this.querySuccess = null;
 
                 try {
-                    const firebase = this.$root.firebase;
-
-                    querySnapshot = await FirebaseSQL(query, firebase.firestore());
+                    docs = await FirebaseSQL(query, this.firebase.firestore());
                 } catch (e) {
 
                     const { code } = e;
@@ -50,29 +58,24 @@
                     if(code === 9) {
                         const splitPoint = e.details.indexOf(":") + 1;
                         const indexCreationLink = e.details.substr(splitPoint).trim();
-                        console.info(indexCreationLink);
+                        this.queryError = `This query requires an index - <a href="${indexCreationLink}">click here to create it</a>.`;
                     } else {
-                        console.error(e);
+                        this.queryError = e.message;
                     }
-
-                    return;
                 } finally {
                     this.querySubmitted = false;
                 }
 
-                // It's possible that
-                if(!querySnapshot) {
+                if(this.queryError) {
                     return;
                 }
 
-                const { docs } = querySnapshot;
+                // It's possible that
+                if(!docs) {
+                    return;
+                }
 
-                this.documents = docs.map(documentSnapshot => {
-                    return {
-                        id: documentSnapshot.id,
-                        payload: documentSnapshot.data()
-                    }
-                });
+                this.documents = docs;
             },
 
             onCollectionItemClick: async function(document) {
@@ -90,5 +93,5 @@
 </script>
 
 <style lang="scss">
-    @import "../css/component/app";
+    @import "../css/component/main";
 </style>

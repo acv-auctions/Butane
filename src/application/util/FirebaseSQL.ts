@@ -1,9 +1,9 @@
 import * as firebase from "firebase-admin";
 import * as startOfDay from "date-fns/start_of_day";
 import * as endOfDay from "date-fns/end_of_day";
+import {TokenLimit} from "./types";
 
 enum KEYWORDS {
-    CREATE      = "create",
     SELECT      = "select",
     INSERT      = "insert",
     UPDATE      = "update",
@@ -14,7 +14,8 @@ enum KEYWORDS {
     OR          = "or",
     ">"         = ">",
     BETWEEN     = "between",
-    DUPLICATE   = "duplicate"
+    DUPLICATE   = "duplicate",
+    INTO        = "into"
 }
 
 const keywordsArray: string[] = [
@@ -28,56 +29,69 @@ const keywordsArray: string[] = [
     KEYWORDS[">"]
 ];
 
-const tokenToType = (tokenValue: string, tokens: Tokens) => {
+const tokenToType = (tokens: Tokens) => {
 
-    let valAsNumber = parseFloat(tokenValue);
-    let valAsDate = ISODateStringToDate(tokenValue);
+    const cautiousValue = tokens.peek();
 
-    if(tokenValue === "null") {
+    let valAsNumber = parseFloat(cautiousValue);
+    let valAsDate = ISODateStringToDate(cautiousValue);
 
+    if(cautiousValue === "null") {
+
+        // "Skip" the value
+        tokens.consume();
         return null;
 
     } else if(valAsDate) {
 
+        // "Skip" the value
+        tokens.consume();
         return valAsDate;
 
     } else if(!isNaN(valAsNumber)) {
 
+        // "Skip" the value
+        tokens.consume();
         return valAsNumber;
 
-    } else if(["true", "false"].indexOf(tokenValue) !== -1) {
+    } else if(["true", "false"].indexOf(cautiousValue) !== -1) {
 
-        return tokenValue === "true";
+        return tokens.consume() === "true";
 
-    } else if(tokenValue.startsWith("\"")) {
+    } else if(cautiousValue.startsWith("\"")) {
 
-        tokens.stepBackwards();
-        tokens.setOffset(tokens.getOffset() + 1);
+        return tokens.consume({ head: "\"", tail: "\"" }).slice(1, -1);
 
-        return tokens.getNextToken("\"");
+    } else if(cautiousValue.startsWith("{")) {
 
-    } else if(tokenValue.startsWith("{")) {
+        // DEPRECATED: Use built-in JSON.parse instead.
+        /*const result: any = {};
 
-        const result: any = {};
+        const keyValues = tokens.consume({ head: "{", tail: "}" });
 
-        tokens.stepBackwards();
-        tokens.setOffset(tokens.getOffset() + 1);
+        for(const token of keyValues.split(/}\s+/)) {
 
-        const keyValues = tokens.getNextToken("}");
+            console.info(token);
 
-        for(const token of keyValues.split(" ")) {
-            const s = token.split(":");
+            const key = token.slice(1, token.indexOf(":")).trim();
+            const value = token.slice(token.indexOf(":") + 1, token.length).trim();
 
-            const key = s[0], val = s[1];
+            console.info(key, value);
 
-            if(!key || !val) {
+            if(!key || !value) {
                 throw new Error("");
             }
 
-            result[key] = tokenToType(val, new Tokens(val));
+            result[key] = tokenToType(new Tokens(value));
         }
 
-        return result;
+        return result;*/
+
+        try {
+            return JSON.parse(tokens.consume({ head: "{", tail: "}" }));
+        } catch (e) {
+            throw new Error("Error parsing provided object.");
+        }
 
     } else {
         throw Error("Unknown value type.");
@@ -100,66 +114,99 @@ class Tokens {
 
     private tokenString: string;
     private offset: number;
-    private previousToken: string;
 
     constructor(tokenString: string) {
-        this.tokenString = tokenString.replace(/\s\s+/g, ' ');
+        this.tokenString = tokenString.replace(/\s\s+/g, ' ').trim();
         this.offset = 0;
     }
 
-    public setOffset(offset: number) {
-        this.offset = offset;
-    }
-
-    public getOffset() {
-        return this.offset;
-    }
-
-    public stepBackwards() {
-
-        if(!this.previousToken) {
-            return;
-        }
-
-        this.offset = this.offset - this.previousToken.length - 1;
-        this.previousToken = null;
-    }
-
-    public getNextToken(stopCharacter?: string) {
-
+    private stepForward(limit?: TokenLimit): { token: string, offset: number } {
         const array = [];
+
+        let offset = 0;
+        let limitCount = 0;
+        let hasReachedEnd = false;
 
         for(let x = this.offset; x < this.tokenString.length; x++) {
 
-            const c = this.tokenString[x];
+            const character = this.tokenString[x];
+            const charCode = character.charCodeAt(0);
 
-            if(stopCharacter) {
+            if(limit) {
 
-                if(c.charCodeAt(0) === stopCharacter.charCodeAt(0)) {
-                    this.offset += array.length + 2;
+                // If the same identifier is used for both the head and tail, we only increment on the initial index.
+                if(limit.head.charCodeAt(0) === limit.tail.charCodeAt(0)) {
+
+                    if(x === this.offset) {
+                        limitCount += 1;
+                    } else if(charCode === limit.head.charCodeAt(0)) {
+                        limitCount -= 1;
+                    }
+
+                } else {
+
+                    if(charCode === limit.head.charCodeAt(0)) {
+
+                        limitCount += 1;
+
+                    } else if(charCode == limit.tail.charCodeAt(0)) {
+
+                        limitCount -= 1;
+
+                    }
+                }
+
+                array.push(character);
+
+                if(limitCount === 0) {
+
+                    // Initial index must contain head
+                    if(x === this.offset) {
+                        throw new Error("WAT?!");
+                    }
+
+                    offset += array.length + 1;
                     break;
                 }
 
-            } else if(c.charCodeAt(0) === 32) {
-                this.offset += array.length + 1;
-                break;
+            } else {
+                if(charCode === 32) {
+                    offset += array.length + 1;
+                    break;
+                }
 
+                array.push(character);
             }
 
-            array.push(c);
+            if(x === this.tokenString.length - 1) {
+                hasReachedEnd = true;
+            }
         }
 
-        //this.offset += array.length + 1;
+        if(this.tokenString[offset]) {
+            /*while(this.tokenString.charCodeAt(offset) === 32) {
+                offset += 1;
+            }*/
+        }
 
-        if(!array.length) {
+        return { token: array.join(""), offset: hasReachedEnd ? this.tokenString.length : offset };
+    }
+
+    public peek(tokenLimit?: TokenLimit) {
+        return this.stepForward(tokenLimit).token;
+    }
+
+    public consume(tokenLimit?: TokenLimit) {
+
+        if(this.offset >= this.tokenString.length - 1) {
             throw new Error("Exhausted token array.");
         }
 
-        const token = array.join("").trim();
+        const result = this.stepForward(tokenLimit);
 
-        this.previousToken = token;
+        this.offset += result.offset;
 
-        return token;
+        return result.token;
     }
 }
 
@@ -167,22 +214,32 @@ export default async function (query: string, firestore: firebase.firestore.Fire
 
     const tokens = new Tokens(query);
 
-    let fields = null, collection = null, duplicateDocument = null;
+    let fields: string[] = null, collection = null;
+    let updateDocument = null;
+    let duplicateDocument = null, newDocument = null;
+
+    let bridgeToken = null;
+
+    const initialToken = tokens.consume();
 
     // First token should be a clause that identifies the operation to perform.
-    switch (tokens.getNextToken().toLowerCase()) {
+    switch (initialToken.toLowerCase()) {
         case KEYWORDS.SELECT:
 
             let selectFields = [];
 
-            let nextToken = tokens.getNextToken();
+            let nextToken = tokens.consume();
 
+            // Treat each token as a field until we reach a reserved keyword.
             while(keywordsArray.indexOf(nextToken.toLowerCase()) === -1) {
 
                 selectFields.push(nextToken);
 
-                nextToken = tokens.getNextToken();
+                nextToken = tokens.consume();
             }
+
+            // We can remember this identifier for later use.
+            bridgeToken = nextToken;
 
             if(selectFields.filter(field => { return field === "*" }).length) {
 
@@ -198,14 +255,10 @@ export default async function (query: string, firestore: firebase.firestore.Fire
 
             }
 
-            tokens.stepBackwards();
-
             break;
         case KEYWORDS.UPDATE:
 
-            const collection = tokens[1];
-
-
+            const collection = tokens.consume();
 
             break;
         case KEYWORDS.DELETE:
@@ -216,37 +269,53 @@ export default async function (query: string, firestore: firebase.firestore.Fire
 
         case KEYWORDS.DUPLICATE:
 
-            duplicateDocument = tokens.getNextToken();
+            duplicateDocument = tokens.consume();
 
             break;
 
         case KEYWORDS.INSERT: {
 
-            tokens.setOffset(tokens.getOffset() + 1);
+            let value = tokens.consume({ head: "{", tail: "}" });
 
-            const value = tokens.getNextToken("}");
+            //value = tokenToType(new Tokens(value));
 
-            const o = tokens.getNextToken();
+            //const operator = tokens.consume();
 
-            const collection = tokens.getNextToken();
+            //const collection = tokens.consume();
 
-            console.info(value, o, collection);
+            //console.info(value, operator, collection);
+            try {
+                newDocument = tokenToType(new Tokens(value));
+            } catch (e) {
+                throw new Error("Error parsing provided object.");
+            }
 
-            return;
+            //return;
+            break;
         }
 
         default:
-            throw new Error("Unknown TODO");
+            throw new Error(`Unknown keyword: ${initialToken}`);
     }
 
-    switch (tokens.getNextToken().toLowerCase()) {
+    const collectionToken = bridgeToken ? bridgeToken : tokens.consume();
+
+    switch (collectionToken.toLowerCase()) {
         case KEYWORDS.FROM:
-
-            collection = tokens.getNextToken();
-
+            collection = tokens.consume();
             break;
+
+        case KEYWORDS.INTO:
+
+            if(!newDocument) {
+                throw new Error(`Keyword '${KEYWORDS.INTO}' is not available for the given query.`);
+            }
+
+            collection = tokens.consume();
+            break;
+
         default:
-            throw new Error("Unknown TODO");
+            throw new Error(`Unexpected token: ${collectionToken}`);
     }
 
     const constraints: {
@@ -262,16 +331,18 @@ export default async function (query: string, firestore: firebase.firestore.Fire
         let nextOptionalToken;
 
         try {
-            nextOptionalToken = tokens.getNextToken();
+            nextOptionalToken = tokens.consume();
         } catch (e) {
             console.info(constraints);
             break;
         }
 
+        console.info(nextOptionalToken);
+
         switch (nextOptionalToken.toLowerCase()) {
             case KEYWORDS.AND:
             case KEYWORDS.WHERE:
-                const field = tokens.getNextToken(), operator = tokens.getNextToken().toLowerCase();
+                const field = tokens.consume(), operator = tokens.consume().toLowerCase();
 
                 if(nextOptionalToken === KEYWORDS.WHERE) {
                     whereUsed = true;
@@ -280,13 +351,13 @@ export default async function (query: string, firestore: firebase.firestore.Fire
                 }
 
                 if(operator === KEYWORDS.BETWEEN) {
-                    let left: any = tokens.getNextToken(), right: any = tokens.getNextToken();
+                    let left: any = tokens.consume(), right: any = tokens.consume();
 
                     left = ISODateStringToDate(left);
                     right = ISODateStringToDate(right);
 
                     if(!left || !right) {
-                        throw Error("");
+                        throw Error(`Invalid syntax for '${KEYWORDS.BETWEEN}' operator.`);
                     }
 
                     orderBy = { field, startDate: startOfDay(left), endDate: endOfDay(right) };
@@ -294,46 +365,98 @@ export default async function (query: string, firestore: firebase.firestore.Fire
                     continue;
                 }
 
-                let value = tokenToType(tokens.getNextToken(), tokens);
-
-                console.info("Constraint value", value);
+                let value = tokenToType(tokens);
 
                 constraints.push({ field, operator, value });
 
                 break;
             default:
-                throw Error("Unknown TODO");
+                throw Error(`Unexpected token: ${nextOptionalToken}`);
         }
     }
 
     let fireQuery: firebase.firestore.Query = firestore.collection(collection);
 
+    if(newDocument) {
+        const docRef = (fireQuery as firebase.firestore.CollectionReference).doc();
+
+        await docRef.set(newDocument);
+
+        return null;
+    }
+
     if(duplicateDocument) {
         const doc = await (fireQuery as firebase.firestore.CollectionReference).doc(duplicateDocument).get();
 
         if(!doc.exists) {
-            throw Error("TODO")
+            throw Error("The provided document does not exist for the given collection.")
         }
 
-        const ref: firebase.firestore.DocumentReference = firestore.collection(collection).doc();
+        const ref: firebase.firestore.DocumentReference = (fireQuery as firebase.firestore.CollectionReference).doc();
 
         ref.set(doc.data());
 
         return null; // TODO
     }
 
-    if(fields.length) {
-        fireQuery = fireQuery.select(...fields);
+    const optionalDocumentId = constraints
+        .filter(constraint => {
+            return constraint.field === "DOCID";
+        }).map(constraint => {
+            return constraint.value;
+        });
+
+    if(optionalDocumentId.length) {
+
+        if(optionalDocumentId.length > 1) {
+            throw Error("Cannot combine filters with 'DOCID'.");
+        }
+
+        const doc = await (fireQuery as firebase.firestore.CollectionReference).doc(optionalDocumentId[0]).get();
+
+        if(!doc.exists) {
+            throw Error("The provided document does not exist for the given collection.")
+        }
+
+        const documentData = doc.data();
+        let payload = {};
+
+        if(fields.length) {
+            for(const key of Object.keys(documentData)) {
+                if(fields.indexOf(key) !== -1) {
+                    payload[key] = documentData[key];
+                }
+            }
+        } else {
+            payload = documentData;
+        }
+
+        return [{
+            id: doc.id,
+            payload
+        }]
+
+    } else {
+        if(fields.length) {
+            fireQuery = fireQuery.select(...fields);
+        }
+
+        constraints.forEach(constraint => {
+            fireQuery = fireQuery.where(constraint.field, constraint.operator, constraint.value);
+        });
+
+        if(orderBy) {
+            fireQuery = fireQuery.orderBy(orderBy.field).startAt(orderBy.startDate).endAt(orderBy.endDate);
+        }
+
+        // TODO configure limit
+        const result = await fireQuery.limit(25).get();
+
+        return result.docs.map(documentSnapshot => {
+            return {
+                id: documentSnapshot.id,
+                payload: documentSnapshot.data()
+            }
+        });
     }
-
-    constraints.forEach(constraint => {
-        fireQuery = fireQuery.where(constraint.field, constraint.operator, constraint.value);
-    });
-
-    if(orderBy) {
-        fireQuery = fireQuery.orderBy(orderBy.field).startAt(orderBy.startDate).endAt(orderBy.endDate);
-    }
-
-    // TODO configure limit
-    return fireQuery.limit(25).get();
 };
