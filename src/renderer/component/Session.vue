@@ -11,28 +11,41 @@
                     v-on:click="onSaveSessionButtonClick()"
                     class="button">Save</button>
         </div>
-        <div v-if="currentView === SessionViewType.SAVED">
-            <ul class="styled" v-if="previousSessions.length">
-                <li v-for="(session, index) in previousSessions" v-on:click="onSessionClick(index)">
-                    <div>{{ session.label }}</div>
-                    <small>{{ getFileNameFromPath(session.credential_path) }}</small>
-                </li>
-            </ul>
+        <div class="session-table-container" v-if="currentView === SessionViewType.SAVED">
+            <table v-if="previousSessions.length">
+                <tbody>
+                <tr v-for="(session, index) in previousSessions">
+                    <td>
+                        <div>{{ session.label }}</div>
+                        <small>{{ getFileNameFromPath(session.credential_path) }}</small>
+                    </td>
+                    <td class="text-right">
+                        <button v-on:click="onSessionConfirmClick(index)" class="button-small m-r-10">
+                            SELECT
+                        </button>
+                        <button v-on:click="onSessionDeleteClick(index)" class="button-small button-error m-r-10">
+                            DELETE
+                        </button>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
             <h5 v-if="!previousSessions.length">You have no previous sessions.</h5>
         </div>
-        <div v-if="currentView === SessionViewType.NEW">
+        <div class="m-t-10" v-if="currentView === SessionViewType.NEW">
             <form>
                 <label>Session Label</label>
-                <input v-model="form.sessionLabel" type="text">
+                <input class="m-b-10" v-model="form.sessionLabel" maxlength="30" type="text">
                 <label>Credential File Path</label>
                 <input ref="folderSelectorInput" v-model="form.credentialFilePath" v-on:focus="openFolderSelectorDialog()" placeholder="Click to browse" type="text">
             </form>
         </div>
+
     </div>
 </template>
 
 <script>
-    import { SessionViewType } from "../util/types";
+    import { SessionViewType } from "util/types";
     import { remote } from "electron";
 
     export default {
@@ -50,13 +63,17 @@
             }
         },
         mounted: function() {
-            let sessions = window.localStorage.getItem("sessions");
-
-            if(sessions) {
-                this.previousSessions = JSON.parse(sessions);
-            }
+            this.reloadSessions();
         },
         methods: {
+
+            reloadSessions: function() {
+                let sessions = window.localStorage.getItem("sessions");
+
+                if(sessions) {
+                    this.previousSessions = JSON.parse(sessions);
+                }
+            },
 
             getFileNameFromPath: function(path) {
                 return remote.require("path").basename(path);
@@ -70,6 +87,7 @@
             switchView: function(view) {
                 this.currentView = view;
                 this.resetFormModels();
+                this.$emit("viewChange");
             },
 
             onSaveSessionButtonClick: function() {
@@ -88,6 +106,10 @@
                 });
 
                 window.localStorage.setItem("sessions", JSON.stringify(sessions));
+
+                this.reloadSessions();
+
+                this.switchView(SessionViewType.SAVED)
             },
 
             openFolderSelectorDialog: function() {
@@ -109,13 +131,24 @@
                 })
             },
 
-            onSessionClick: function(index) {
+            onSessionConfirmClick: function(index) {
                 let savedSessions = window.localStorage.getItem("sessions");
                 savedSessions = JSON.parse(savedSessions);
 
                 const { credential_path, label } = savedSessions[index];
 
                 this.$emit("sessionChosen", credential_path, label);
+            },
+
+            onSessionDeleteClick: function(index) {
+                let savedSessions = window.localStorage.getItem("sessions");
+                savedSessions = JSON.parse(savedSessions);
+
+                savedSessions.splice(index, 1);
+
+                window.localStorage.setItem("sessions", JSON.stringify(savedSessions));
+
+                this.reloadSessions();
             }
 
         }

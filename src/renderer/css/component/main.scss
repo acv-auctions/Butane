@@ -21,16 +21,16 @@
     align-items: center;
     height: $notification-container-height;
 
-    span {
+    /*span {
 
       &.error {
         color: #ff2320; // TODO make variable
       }
 
-      .success {
+      &.success {
         color: #39ba37;
       }
 
-    }
+    }*/
   }
 }
