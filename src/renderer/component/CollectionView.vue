@@ -3,13 +3,17 @@
         <div v-for="(collection, index) in collections" class="collection animate-fade-in-right">
             <header>
                 <h3>{{collection.id}}</h3>
+                <img v-on:click="onReloadButtonClick(index)" width="25" src="../img/reload.svg" />
             </header>
             <div class="list-container">
-                <ul class="styled">
+                <ul v-if="collection.list.length" class="styled-default">
                     <li v-for="identifier in collection.list" @click="onListItemClick(index, identifier)">
                         <span>{{identifier}}</span>
                     </li>
                 </ul>
+                <h5 class="text-center" v-else-if="!loadingDocuments && !collection.list.length">
+                    No documents in this collection.
+                </h5>
                 <div v-if="collection.type === CollectionType.DOCUMENTS" class="text-center">
                     <button v-if="!collection.endOfDocuments"
                             v-bind:disabled="loadingDocuments"
@@ -22,7 +26,19 @@
 </template>
 
 <script lang="ts">
-    import {CollectionType} from "../util/types";
+    import {CollectionType} from "util/types";
+
+    interface State {
+        loadingDocuments: boolean;
+        CollectionType: CollectionType;
+        collections: {
+            type: CollectionType;
+            id: string;
+            list: any[];
+            lastDocument?: firebase.firestore.DocumentReference | null;
+            endOfDocuments?: boolean;
+        }[];
+    }
 
     export default {
         name: "collectionView",
@@ -31,22 +47,32 @@
                 loadingDocuments: false,
                 CollectionType: CollectionType,
                 collections: []
-            }
+            } as State
         },
-        props: ['firebase'],
+        props: {
+            firebase: Object
+        },
+        inject: ['updateStatusMessage'],
         mounted: async function() {
-            const collections = await this.firebase.firestore().getCollections();
-
-            // Load initial root collection
-            this.collections.push({
-                type: CollectionType.COLLECTION,
-                id: "Root",
-                list: collections.map(reference => {
-                    return reference._path.relativeName;
-                })
-            });
+            this.refreshRootCollection();
         },
         methods: {
+
+            async refreshRootCollection() {
+                const collections = await this.firebase.firestore().getCollections();
+
+                // Load initial root collection
+                this.collections[0] = {
+                    type: CollectionType.COLLECTION,
+                    id: "Root",
+                    list: collections.map(reference => {
+                        return reference.path;
+                    })
+                };
+
+                this.$forceUpdate();
+            },
+
             onListItemClick: async function(index, identifier) {
 
                 const item = this.collections[index];
@@ -58,10 +84,6 @@
                         const path = this.collections.slice(1).map(collection => { return collection.id }).join("/");
 
                         const reference = this.firebase.firestore().doc(`${path}/${identifier}`);
-
-                        /*const subCollectionIdentifiers = (await reference.getCollections()).map(reference => {
-                            return reference._path.relativeName;
-                        });*/
 
                         const documentSnapshot = await reference.get();
 
@@ -95,6 +117,7 @@
 
                 }
             },
+
             onLoadMoreDocumentsButtonClick: async function(index) {
                 const item = this.collections[index];
 
@@ -106,7 +129,7 @@
                     collectionReference = collectionReference.startAfter(item.lastDocument)
                 }
 
-                const result = await collectionReference.limit(25).get();
+                const result = await collectionReference.limit(50).get();
 
                 this.loadingDocuments = false;
 
@@ -123,6 +146,30 @@
                 } else {
                     item.lastDocument = result.docs[result.docs.length - 1];
                 }
+            },
+
+            onReloadButtonClick: async function(index) {
+
+                if(this.loadingDocuments) {
+                    return;
+                }
+
+                this.loadingDocuments = true;
+
+                this.collections[index].list = [];
+
+                if(index === 0) {
+                    await this.refreshRootCollection();
+                } else {
+                    this.collections[index].lastDocument = null;
+                    this.collections[index].endOfDocuments = false;
+
+                    await this.onLoadMoreDocumentsButtonClick(index);
+                }
+
+                this.updateStatusMessage(`Collection has been reloaded`, true);
+
+                this.loadingDocuments = false;
             }
         }
     };

@@ -10,7 +10,9 @@
 <script lang="ts">
     export default {
         name: "termInput",
-        props: [ "isDisabled" ],
+        props: {
+            isDisabled: Boolean
+        },
         data: () => {
             return {
                 queryModel: ""

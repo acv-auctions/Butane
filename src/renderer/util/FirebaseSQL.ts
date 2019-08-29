@@ -64,29 +64,6 @@ const tokenToType = (tokens: Tokens) => {
 
     } else if(cautiousValue.startsWith("{")) {
 
-        // DEPRECATED: Use built-in JSON.parse instead.
-        /*const result: any = {};
-
-        const keyValues = tokens.consume({ head: "{", tail: "}" });
-
-        for(const token of keyValues.split(/}\s+/)) {
-
-            console.info(token);
-
-            const key = token.slice(1, token.indexOf(":")).trim();
-            const value = token.slice(token.indexOf(":") + 1, token.length).trim();
-
-            console.info(key, value);
-
-            if(!key || !value) {
-                throw new Error("");
-            }
-
-            result[key] = tokenToType(new Tokens(value));
-        }
-
-        return result;*/
-
         try {
             return JSON.parse(tokens.consume({ head: "{", tail: "}" }));
         } catch (e) {
@@ -337,8 +314,6 @@ export default async function (query: string, firestore: firebase.firestore.Fire
             break;
         }
 
-        console.info(nextOptionalToken);
-
         switch (nextOptionalToken.toLowerCase()) {
             case KEYWORDS.AND:
             case KEYWORDS.WHERE:
@@ -357,7 +332,7 @@ export default async function (query: string, firestore: firebase.firestore.Fire
                     right = ISODateStringToDate(right);
 
                     if(!left || !right) {
-                        throw Error(`Invalid syntax for '${KEYWORDS.BETWEEN}' operator.`);
+                        throw Error(`Invalid date(s) provided for '${KEYWORDS.BETWEEN}' operator.`);
                     }
 
                     orderBy = { field, startDate: startOfDay(left), endDate: endOfDay(right) };
@@ -433,7 +408,8 @@ export default async function (query: string, firestore: firebase.firestore.Fire
 
         return [{
             id: doc.id,
-            payload
+            payload,
+            path: doc.ref.path
         }]
 
     } else {
@@ -450,12 +426,13 @@ export default async function (query: string, firestore: firebase.firestore.Fire
         }
 
         // TODO configure limit
-        const result = await fireQuery.limit(25).get();
+        const result = await fireQuery.limit(50).get();
 
         return result.docs.map(documentSnapshot => {
             return {
                 id: documentSnapshot.id,
-                payload: documentSnapshot.data()
+                payload: documentSnapshot.data(),
+                path: documentSnapshot.ref.path
             }
         });
     }
