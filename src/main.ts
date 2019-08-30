@@ -21,11 +21,10 @@ global.createFirebaseInstance = async (path, name) => {
     }
 
     let certificate: any;
+    let contentsAtPath;
 
     try {
-
-        // TODO This should probably be in its own try-catch
-        const str = await new Promise((accept, reject) => {
+        contentsAtPath = await new Promise((accept, reject) => {
             readFile(path, { encoding: 'utf-8' }, (error, data) => {
                 if(error) {
                     reject();
@@ -34,8 +33,12 @@ global.createFirebaseInstance = async (path, name) => {
                 accept(data);
             });
         }) as string;
+    } catch (e) {
+        throw new Error("Could not read file at given path. Perhaps it was moved?");
+    }
 
-        certificate = JSON.parse(str);
+    try {
+        certificate = JSON.parse(contentsAtPath);
     } catch (e) {
         throw new Error("Invalid JSON format.");
     }
