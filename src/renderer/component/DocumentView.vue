@@ -3,6 +3,9 @@
         <div @click="dissmiss" class="background-container"></div>
         <div class="content-container animate-fade-in-up">
             <div class="selection">
+                <div>
+                    <button @click="onExportToCSVButtonClick" class="button">Export to CSV</button>
+                </div>
                 <ul class="styled-default">
                     <li v-bind:class="{ selected: selectedIndex === index }"
                         v-for="(doc, index) in documents"
@@ -59,8 +62,9 @@
 
     import fileCopyIcon from "img/file-copy.svg";
     import {DocumentActionType} from "util/types";
-    import { clipboard } from "electron";
+    import { clipboard } from "electron"
     import VJsoneditor from "v-jsoneditor";
+    import { remote } from "electron";
 
     export default {
         name: "DocumentView",
@@ -88,6 +92,7 @@
         watch: {
             documents: function(newVal, oldVal) {
                 this.selectedIndex = 0;
+                this.onItemClick(this.selectedIndex);
             },
             documentEditPayloadCopy: function() {
                 this.documentEditModelValid = true;
@@ -122,6 +127,14 @@
 
             onDocumentCopyButtonClick: function() {
                 clipboard.writeText(this.documents[this.selectedIndex].id);
+            },
+
+            onExportToCSVButtonClick: async function() {
+                const result = await remote.dialog.showSaveDialog({
+                    filters: [ { name: "CSV", extensions: ["csv"] } ]
+                });
+                const file = remote.getGlobal("createCSVFileFromObjects")(result.filePath, this.documents.map(document => { return document.payload }));
+                this.updateStatusMessage(`Exported results to "${file}"`, true)
             },
 
             onSubmitDuplicateDocumentButtonClick: async function() {

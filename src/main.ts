@@ -1,6 +1,8 @@
 import { BrowserWindow, app } from "electron";
 import * as firebase from "firebase-admin";
 import { readFile } from "fs";
+import ObjectsToCSV from "objects-to-csv";
+import * as path from "path";
 
 declare var global;
 
@@ -62,6 +64,11 @@ global.deleteFirebaseInstance = async (name) => {
 
     fireInstances[name].delete();
     delete fireInstances[name];
+};
+
+global.createCSVFileFromObjects = (filepath: string, contents: object[]) => {
+    new ObjectsToCSV(contents).toDisk(filepath, { allColumns: true });
+    return path.basename(filepath)
 };
 
 let mainWindow = null;
