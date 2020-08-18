@@ -2,6 +2,7 @@ import * as firebase from "firebase-admin";
 import * as startOfDay from "date-fns/start_of_day";
 import * as endOfDay from "date-fns/end_of_day";
 import {TokenLimit} from "./types";
+import format from "date-fns/format";
 
 enum KEYWORDS {
     SELECT      = "select",
@@ -13,9 +14,11 @@ enum KEYWORDS {
     AND         = "and",
     OR          = "or",
     ">"         = ">",
+    IN           = "IN",
     BETWEEN     = "between",
     DUPLICATE   = "duplicate",
-    INTO        = "into"
+    INTO        = "into",
+    LIMIT       = "limit"
 }
 
 const keywordsArray: string[] = [
@@ -173,10 +176,10 @@ class Tokens {
         return this.stepForward(tokenLimit).token;
     }
 
-    public consume(tokenLimit?: TokenLimit) {
+    public consume(tokenLimit?: TokenLimit, errorMessage?: string) {
 
-        if(this.offset >= this.tokenString.length - 1) {
-            throw new Error("Exhausted token array.");
+        if(this.offset >= this.tokenString.length) {
+            throw new Error(errorMessage ? errorMessage : "Exhausted token array.");
         }
 
         const result = this.stepForward(tokenLimit);
@@ -194,10 +197,11 @@ export default async function (query: string, firestore: firebase.firestore.Fire
     let fields: string[] = null, collection = null;
     let updateDocument = null;
     let duplicateDocument = null, newDocument = null;
+    let limit = null;
 
     let bridgeToken = null;
 
-    const initialToken = tokens.consume();
+    const initialToken = tokens.consume(null, "Missing directive, e.g. SELECT, UPDATE, DELETE, etc.");
 
     // First token should be a clause that identifies the operation to perform.
     switch (initialToken.toLowerCase()) {
@@ -301,8 +305,10 @@ export default async function (query: string, firestore: firebase.firestore.Fire
         value: any;
     }[] = [];
 
-    let whereUsed = false;
+    // let whereUsed = false;
     let orderBy: { field: string, startDate: Date, endDate: Date } = null;
+
+    console.log("Here!");
 
     while(true) {
         let nextOptionalToken;
@@ -310,7 +316,6 @@ export default async function (query: string, firestore: firebase.firestore.Fire
         try {
             nextOptionalToken = tokens.consume();
         } catch (e) {
-            console.info(constraints);
             break;
         }
 
@@ -319,11 +324,11 @@ export default async function (query: string, firestore: firebase.firestore.Fire
             case KEYWORDS.WHERE:
                 const field = tokens.consume(), operator = tokens.consume().toLowerCase();
 
-                if(nextOptionalToken === KEYWORDS.WHERE) {
+                /*if(nextOptionalToken === KEYWORDS.WHERE) {
                     whereUsed = true;
                 } else if(nextOptionalToken === KEYWORDS.AND && !whereUsed) {
                     throw Error("");
-                }
+                }*/
 
                 if(operator === KEYWORDS.BETWEEN) {
                     let left: any = tokens.consume(), right: any = tokens.consume();
@@ -345,10 +350,15 @@ export default async function (query: string, firestore: firebase.firestore.Fire
                 constraints.push({ field, operator, value });
 
                 break;
+            case KEYWORDS.LIMIT:
+                limit = tokenToType(tokens);
+                break;
             default:
                 throw Error(`Unexpected token: ${nextOptionalToken}`);
         }
     }
+
+    console.log("And here!");
 
     let fireQuery: firebase.firestore.Query = firestore.collection(collection);
 
@@ -425,13 +435,27 @@ export default async function (query: string, firestore: firebase.firestore.Fire
             fireQuery = fireQuery.orderBy(orderBy.field).startAt(orderBy.startDate).endAt(orderBy.endDate);
         }
 
-        // TODO configure limit
-        const result = await fireQuery.limit(50).get();
+        if(limit) {
+            fireQuery = fireQuery.limit(limit);
+        }
+
+        const result = await fireQuery.get();
 
         return result.docs.map(documentSnapshot => {
+
+            const payload = documentSnapshot.data();
+
+            for(const key in payload) {
+                if(typeof payload[key] === "object"
+                    && payload[key]._seconds !== undefined
+                    && payload[key]._nanoseconds !== undefined) {
+                    payload[key] = format(new Date(payload[key]._seconds * 1000), "MM-DD-YYYY [at] hh:mm:ss A")
+                }
+            }
+
             return {
                 id: documentSnapshot.id,
-                payload: documentSnapshot.data(),
+                payload,
                 path: documentSnapshot.ref.path
             }
         });

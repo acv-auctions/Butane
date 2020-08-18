@@ -58,7 +58,7 @@
         },
         methods: {
 
-            setStatus: function(message: string, type?: boolean = null) {
+            setStatus: function(message: string, type: boolean = null) {
                 this.status = {
                     message,
                     type
@@ -69,11 +69,14 @@
 
                 let docs;
 
+                let hasError = false;
                 this.querySubmitted = true;
 
                 try {
                     docs = await FirebaseSQL(query, this.firebase.firestore());
                 } catch (e) {
+
+                    hasError = true;
 
                     const { code } = e;
 
@@ -85,11 +88,13 @@
                     } else {
                         this.setStatus(e.message, false);
                     }
+
+                    console.error(e);
                 } finally {
                     this.querySubmitted = false;
                 }
 
-                if(this.status.error) {
+                if(hasError) {
                     return;
                 }
 

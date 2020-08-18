@@ -48,10 +48,11 @@
     "dotenv": "^7.0.0",
     "dotenv-webpack": "^1.7.0",
     "electron-settings": "^3.2.0",
-    "firebase": "^5.11.1",
-    "firebase-admin": "^7.4.0",
+    "firebase": "^7.13.1",
+    "firebase-admin": "^8.10.0",
     "json-formatter-js": "^2.2.1",
     "milligram": "^1.3.0",
+    "objects-to-csv": "^1.3.6",
     "sanitize.css": "^8.0.1",
     "spawn-rx": "^3.0.0",
     "v-jsoneditor": "^1.2.2",
@@ -60,7 +61,7 @@
   "build": {
     "productName": "FireClient",
     "appId": "trueframe.fireclient",
-    "buildDependenciesFromSource": true,
+    "buildDependenciesFromSource": false,
     "nodeGypRebuild": false,
     "npmRebuild": false,
     "win": {

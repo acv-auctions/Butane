@@ -33,6 +33,23 @@
       width: 30%;
       border-right: 1px solid $color-primary;
       overflow: auto;
+      display: flex;
+      flex-direction: column;
+      padding-top: 10px;
+
+      > div {
+        text-align: center;
+      }
+
+      > ul {
+        flex: 1;
+
+        > li {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          word-break: normal;
+        }
+      }
     }
 
     .view {
