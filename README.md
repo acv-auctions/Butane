@@ -5,7 +5,12 @@ Firebase's admin SDK to make management of collections and documents
 a little easier. It exposes an "SQL-like" DDL for creating, updating,
 and deleting documents, along with sorting and filtering.
 
-##### At the moment, it is recommended not to execute queries against production projects unless you know what you're doing.
+##### At the moment, it is highly recommended not to execute queries against production projects unless you know what you're doing.
+
+Before starting, you'll need a service account credentials file
+for a Firebase project. This can be found via your project's settings
+page under the "Service accounts" tab. **This file should be treated
+as a private key.**
 
 #### Running locally
 
