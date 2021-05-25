@@ -1,8 +1,12 @@
 import * as firebase from "firebase-admin";
 import * as startOfDay from "date-fns/start_of_day";
 import * as endOfDay from "date-fns/end_of_day";
-import {TokenLimit} from "./types";
+import {AliasField, SqlDelimiter, SqlJoin} from "./types";
 import format from "date-fns/format";
+
+enum FUNCTIONS {
+    UPPER
+}
 
 enum KEYWORDS {
     SELECT      = "select",
@@ -12,25 +16,24 @@ enum KEYWORDS {
     FROM        = "from",
     WHERE       = "where",
     AND         = "and",
-    OR          = "or",
-    ">"         = ">",
-    IN           = "IN",
+    SET         = "set",
     BETWEEN     = "between",
     DUPLICATE   = "duplicate",
     INTO        = "into",
-    LIMIT       = "limit"
+    LIMIT       = "limit",
+    JOIN        = "join",
+    ALIAS       = "alias"
 }
 
-const keywordsArray: string[] = [
+/*const keywordsArray: string[] = [
     KEYWORDS.SELECT,
     KEYWORDS.UPDATE,
     KEYWORDS.DELETE,
     KEYWORDS.FROM,
     KEYWORDS.WHERE,
     KEYWORDS.AND,
-    KEYWORDS.OR,
-    KEYWORDS[">"]
-];
+    KEYWORDS.OR
+];*/
 
 const tokenToType = (tokens: Tokens) => {
 
@@ -96,12 +99,13 @@ class Tokens {
     private offset: number;
 
     constructor(tokenString: string) {
-        this.tokenString = tokenString.replace(/\s\s+/g, ' ').trim();
+        this.tokenString = tokenString.replace(/ {2,}/g, ' ').trim();
         this.offset = 0;
     }
 
-    private stepForward(limit?: TokenLimit): { token: string, offset: number } {
-        const array = [];
+    private nextToken(delimiters?: SqlDelimiter): { token: string, offset: number } {
+
+        let array = [];
 
         let offset = 0;
         let limitCount = 0;
@@ -112,24 +116,29 @@ class Tokens {
             const character = this.tokenString[x];
             const charCode = character.charCodeAt(0);
 
-            if(limit) {
+            if(delimiters) {
 
-                // If the same identifier is used for both the head and tail, we only increment on the initial index.
-                if(limit.head.charCodeAt(0) === limit.tail.charCodeAt(0)) {
+                if(!limitCount && charCode === 32) {
+                    offset += array.length + 1;
+                    continue;
+                }
+
+                // If the same character is used for both the head and tail, we only increment on the initial index.
+                if(delimiters.head.charCodeAt(0) === delimiters.tail.charCodeAt(0)) {
 
                     if(x === this.offset) {
                         limitCount += 1;
-                    } else if(charCode === limit.head.charCodeAt(0)) {
+                    } else if(charCode === delimiters.head.charCodeAt(0)) {
                         limitCount -= 1;
                     }
 
                 } else {
 
-                    if(charCode === limit.head.charCodeAt(0)) {
+                    if(charCode === delimiters.head.charCodeAt(0)) {
 
                         limitCount += 1;
 
-                    } else if(charCode == limit.tail.charCodeAt(0)) {
+                    } else if(charCode === delimiters.tail.charCodeAt(0)) {
 
                         limitCount -= 1;
 
@@ -146,6 +155,11 @@ class Tokens {
                     }
 
                     offset += array.length + 1;
+
+                    if(delimiters.omit) {
+                        array = array.slice(1, array.length - 1);
+                    }
+
                     break;
                 }
 
@@ -172,131 +186,227 @@ class Tokens {
         return { token: array.join(""), offset: hasReachedEnd ? this.tokenString.length : offset };
     }
 
-    public peek(tokenLimit?: TokenLimit) {
-        return this.stepForward(tokenLimit).token;
+    public peek(tokenLimit?: SqlDelimiter) {
+        return this.nextToken(tokenLimit).token;
     }
 
-    public consume(tokenLimit?: TokenLimit, errorMessage?: string) {
+    public consume(tokenLimit?: SqlDelimiter) {
 
         if(this.offset >= this.tokenString.length) {
-            throw new Error(errorMessage ? errorMessage : "Exhausted token array.");
+            throw new Error("Exhausted token array.");
         }
 
-        const result = this.stepForward(tokenLimit);
+        const result = this.nextToken(tokenLimit);
 
         this.offset += result.offset;
 
         return result.token;
     }
+
+    public stepBack(limit: number) {
+        this.offset -= limit;
+    }
+
+    public stepForward(limit: number) {
+        this.offset += limit;
+    }
 }
 
-export default async function (query: string, firestore: firebase.firestore.Firestore) {
+export default async function generator(query: string,
+                               firestore: firebase.firestore.Firestore,
+                               options: { joinPaths?: string[] } = {}) {
 
     const tokens = new Tokens(query);
 
-    let fields: string[] = null, collection = null;
-    let updateDocument = null;
-    let duplicateDocument = null, newDocument = null;
+    let operation: KEYWORDS.SELECT | KEYWORDS.INSERT | KEYWORDS.UPDATE | KEYWORDS.DELETE | KEYWORDS.DUPLICATE;
+
+    const aliasedFields = {};
+
+    let rootCollection: string = null;
+    let subCollectionQueries: string[] = [];
+
+    let rootFields: string[] = [];
+
+    let documentBody = null;
+    let documentIdToBeDuplicated = null;
+
     let limit = null;
 
-    let bridgeToken = null;
+    let currentKeyword;
 
-    const initialToken = tokens.consume(null, "Missing directive, e.g. SELECT, UPDATE, DELETE, etc.");
+    try {
+        currentKeyword = tokens.consume(null);
+    } catch (e) {
+        throw new Error("Missing directive, e.g. SELECT, UPDATE, DELETE, etc.");
+    }
 
     // First token should be a clause that identifies the operation to perform.
-    switch (initialToken.toLowerCase()) {
+    switch (currentKeyword.toLowerCase()) {
         case KEYWORDS.SELECT:
 
             let selectFields = [];
 
-            let nextToken = tokens.consume();
-
             // Treat each token as a field until we reach a reserved keyword.
-            while(keywordsArray.indexOf(nextToken.toLowerCase()) === -1) {
+            while(true) {
+
+                let nextToken = tokens.consume();
+
+                if(nextToken.toLowerCase() === KEYWORDS.ALIAS) {
+
+                    const columns = tokens.consume({ head: "(", tail: ")", omit: true })
+                        .replace(/ {2,}/g, ' ')
+                        .split(' ');
+
+                    aliasedFields[columns[0]] = columns[1];
+                    selectFields.push(columns[0]);
+                    console.log(aliasedFields);
+                    continue;
+
+                } else if(nextToken.toLowerCase() === KEYWORDS.FROM) {
+
+                    tokens.stepBack(nextToken.length + 1);
+                    break;
+
+                }
 
                 selectFields.push(nextToken);
-
-                nextToken = tokens.consume();
             }
-
-            // We can remember this identifier for later use.
-            bridgeToken = nextToken;
 
             if(selectFields.filter(field => { return field === "*" }).length) {
 
                 if(selectFields.length !== 1) {
-                    throw new Error("");
+                    throw new Error("Wildcard field cannot be combined with other fields.");
                 }
 
-                fields = [];
+                rootFields = [];
 
             } else {
 
-                fields = selectFields;
+                rootFields = selectFields;
 
             }
+
+            operation = KEYWORDS.SELECT;
 
             break;
         case KEYWORDS.UPDATE:
 
-            const collection = tokens.consume();
+            rootCollection = tokens.consume();
+
+            operation = KEYWORDS.UPDATE;
 
             break;
         case KEYWORDS.DELETE:
 
-
+            // TODO
+            operation = KEYWORDS.DELETE;
 
             break;
 
         case KEYWORDS.DUPLICATE:
 
-            duplicateDocument = tokens.consume();
+            documentIdToBeDuplicated = tokens.consume();
+
+            operation = KEYWORDS.DUPLICATE;
 
             break;
 
         case KEYWORDS.INSERT: {
 
-            let value = tokens.consume({ head: "{", tail: "}" });
+            const value = tokens.consume({ head: "{", tail: "}" });
 
-            //value = tokenToType(new Tokens(value));
-
-            //const operator = tokens.consume();
-
-            //const collection = tokens.consume();
-
-            //console.info(value, operator, collection);
             try {
-                newDocument = tokenToType(new Tokens(value));
+                documentBody = tokenToType(new Tokens(value));
             } catch (e) {
                 throw new Error("Error parsing provided object.");
             }
 
-            //return;
+            operation = KEYWORDS.INSERT;
+
             break;
         }
 
         default:
-            throw new Error(`Unknown keyword: ${initialToken}`);
+            throw new Error(`Unknown keyword: ${currentKeyword}`);
     }
 
-    const collectionToken = bridgeToken ? bridgeToken : tokens.consume();
+    currentKeyword = tokens.consume();
 
-    switch (collectionToken.toLowerCase()) {
+    switch (currentKeyword.toLowerCase()) {
+        case KEYWORDS.SET:
+
+            const value = tokens.consume({ head: "{", tail: "}" });
+
+            try {
+                documentBody = tokenToType(new Tokens(value));
+            } catch (e) {
+                throw new Error("Error parsing provided object.");
+            }
+
+            break;
         case KEYWORDS.FROM:
-            collection = tokens.consume();
+
+            if([ KEYWORDS.SELECT, KEYWORDS.DELETE ].indexOf(operation) === -1) {
+                throw new Error(`Operation "${operation}" cannot be used with "FROM"`);
+            }
+
+            rootCollection = options.joinPaths ? `${options.joinPaths.join("/")}/${tokens.consume()}` : tokens.consume();
             break;
 
         case KEYWORDS.INTO:
 
-            if(!newDocument) {
-                throw new Error(`Keyword '${KEYWORDS.INTO}' is not available for the given query.`);
+            rootCollection = tokens.consume();
+
+            const fireQuery: firebase.firestore.Query = firestore.collection(rootCollection);
+
+            switch (operation) {
+                case KEYWORDS.DUPLICATE: {
+
+                    const doc = await (fireQuery as firebase.firestore.CollectionReference).doc(documentIdToBeDuplicated).get();
+
+                    if(!doc.exists) {
+                        throw Error("The provided document does not exist for the given collection.")
+                    }
+
+                    const ref: firebase.firestore.DocumentReference = (fireQuery as firebase.firestore.CollectionReference).doc();
+
+                    ref.set(doc.data());
+
+                    return null;
+                }
+                case KEYWORDS.INSERT: {
+                    const docRef = (fireQuery as firebase.firestore.CollectionReference).doc();
+
+                    await docRef.set(documentBody);
+
+                    return null;
+                }
+                default:
+                    throw new Error(`Operation "${operation}" cannot be used with "INTO"`);
             }
 
-            collection = tokens.consume();
-            break;
-
         default:
-            throw new Error(`Unexpected token: ${collectionToken}`);
+            throw new Error(`Unexpected token: ${currentKeyword}`);
+    }
+
+    join: while(true) {
+
+        try {
+            currentKeyword = tokens.consume();
+        } catch (e) {
+            break;
+        }
+
+        switch (currentKeyword.toLowerCase()) {
+            case KEYWORDS.JOIN:
+
+                subCollectionQueries.push(tokens.consume({ head: "(", tail: ")", omit: true }));
+
+                break join;
+            default:
+                tokens.stepBack(currentKeyword.length + 1);
+                break join;
+        }
     }
 
     const constraints: {
@@ -305,12 +415,9 @@ export default async function (query: string, firestore: firebase.firestore.Fire
         value: any;
     }[] = [];
 
-    // let whereUsed = false;
     let orderBy: { field: string, startDate: Date, endDate: Date } = null;
 
-    console.log("Here!");
-
-    while(true) {
+    for(let x = 0;; x++) {
         let nextOptionalToken;
 
         try {
@@ -319,16 +426,19 @@ export default async function (query: string, firestore: firebase.firestore.Fire
             break;
         }
 
-        switch (nextOptionalToken.toLowerCase()) {
+        const nextOptionalTokenLower = nextOptionalToken.toLowerCase();
+
+        switch (nextOptionalTokenLower) {
             case KEYWORDS.AND:
             case KEYWORDS.WHERE:
                 const field = tokens.consume(), operator = tokens.consume().toLowerCase();
 
-                /*if(nextOptionalToken === KEYWORDS.WHERE) {
-                    whereUsed = true;
-                } else if(nextOptionalToken === KEYWORDS.AND && !whereUsed) {
-                    throw Error("");
-                }*/
+                // Not really needed, but whatever
+                if(x === 0 && nextOptionalTokenLower !== KEYWORDS.WHERE) {
+                    throw new Error(`Expected "WHERE" clause`);
+                } else if(x > 0 && nextOptionalTokenLower !== KEYWORDS.AND) {
+                    throw new Error(`Expected "AND" clause`);
+                }
 
                 if(operator === KEYWORDS.BETWEEN) {
                     let left: any = tokens.consume(), right: any = tokens.consume();
@@ -351,6 +461,11 @@ export default async function (query: string, firestore: firebase.firestore.Fire
 
                 break;
             case KEYWORDS.LIMIT:
+
+                if(operation !== KEYWORDS.SELECT) {
+                    throw new Error(`"LIMIT" is only valid for "SELECT" operations`);
+                }
+
                 limit = tokenToType(tokens);
                 break;
             default:
@@ -358,31 +473,7 @@ export default async function (query: string, firestore: firebase.firestore.Fire
         }
     }
 
-    console.log("And here!");
-
-    let fireQuery: firebase.firestore.Query = firestore.collection(collection);
-
-    if(newDocument) {
-        const docRef = (fireQuery as firebase.firestore.CollectionReference).doc();
-
-        await docRef.set(newDocument);
-
-        return null;
-    }
-
-    if(duplicateDocument) {
-        const doc = await (fireQuery as firebase.firestore.CollectionReference).doc(duplicateDocument).get();
-
-        if(!doc.exists) {
-            throw Error("The provided document does not exist for the given collection.")
-        }
-
-        const ref: firebase.firestore.DocumentReference = (fireQuery as firebase.firestore.CollectionReference).doc();
-
-        ref.set(doc.data());
-
-        return null; // TODO
-    }
+    let fireQuery: firebase.firestore.Query = firestore.collection(rootCollection);
 
     const optionalDocumentId = constraints
         .filter(constraint => {
@@ -406,9 +497,9 @@ export default async function (query: string, firestore: firebase.firestore.Fire
         const documentData = doc.data();
         let payload = {};
 
-        if(fields.length) {
+        if(rootFields.length) {
             for(const key of Object.keys(documentData)) {
-                if(fields.indexOf(key) !== -1) {
+                if(rootFields.indexOf(key) !== -1) {
                     payload[key] = documentData[key];
                 }
             }
@@ -423,8 +514,8 @@ export default async function (query: string, firestore: firebase.firestore.Fire
         }]
 
     } else {
-        if(fields.length) {
-            fireQuery = fireQuery.select(...fields);
+        if(rootFields.length) {
+            fireQuery = fireQuery.select(...rootFields);
         }
 
         constraints.forEach(constraint => {
@@ -441,23 +532,81 @@ export default async function (query: string, firestore: firebase.firestore.Fire
 
         const result = await fireQuery.get();
 
-        return result.docs.map(documentSnapshot => {
+        if(operation === KEYWORDS.UPDATE) {
+            if(constraints.length) {
+                result.forEach(document => {
+                    document.ref.set(documentBody, { merge: true })
+                })
+            } else {
+                (await firestore.collection(rootCollection).get()).forEach(document => {
+                    document.ref.set(documentBody, { merge: true })
+                })
+            }
+        } else {
 
-            const payload = documentSnapshot.data();
+            const joinedDocuments = {};
 
-            for(const key in payload) {
-                if(typeof payload[key] === "object"
-                    && payload[key]._seconds !== undefined
-                    && payload[key]._nanoseconds !== undefined) {
-                    payload[key] = format(new Date(payload[key]._seconds * 1000), "MM-DD-YYYY [at] hh:mm:ss A")
+            if(subCollectionQueries.length) {
+
+                await Promise.all(result.docs.map(async documentSnapshot => {
+
+                    const payloadsPromise = subCollectionQueries.map(async subCollectionQuery => {
+                        const subQueryResult = await generator(subCollectionQuery, firestore, {
+                            joinPaths: [ ...(options.joinPaths ? options.joinPaths : []), rootCollection, documentSnapshot.id ]
+                        });
+                        return subQueryResult.map(subDocument => { return subDocument.payload; });
+                    });
+
+                    const payloads = await Promise.all(payloadsPromise);
+
+                    if(payloads.length) {
+                        joinedDocuments[documentSnapshot.id] = payloads.flat();
+                    }
+                }));
+            }
+
+            return result.docs.map(documentSnapshot => {
+
+                const combinedPayloads = [];
+
+                // Spread so we can use the delete operator
+                let documentPayload = {...documentSnapshot.data()};
+
+                if(joinedDocuments[documentSnapshot.id]) {
+                    joinedDocuments[documentSnapshot.id].forEach(joinedPayload => {
+                        combinedPayloads.push({ ...documentPayload, ...joinedPayload });
+                    });
+                } else {
+                    combinedPayloads.push(documentPayload);
                 }
-            }
 
-            return {
-                id: documentSnapshot.id,
-                payload,
-                path: documentSnapshot.ref.path
-            }
-        });
+                return combinedPayloads.map(combinedPayload => {
+                    Object.keys(combinedPayload).forEach(key => {
+                        if(aliasedFields[key]) {
+                            combinedPayload[aliasedFields[key]] = combinedPayload[key];
+                            delete combinedPayload[key];
+                        }
+                    });
+
+                    for(const key in combinedPayload) {
+
+                        const property = combinedPayload[key];
+
+                        if(property !== null
+                            && typeof property === "object"
+                            && property._seconds != null
+                            && property._nanoseconds != null) {
+                            combinedPayload[key] = format(new Date(property._seconds * 1000), "MM-DD-YYYY [at] hh:mm:ss A")
+                        }
+                    }
+
+                    return {
+                        id: documentSnapshot.id,
+                        payload: combinedPayload,
+                        path: documentSnapshot.ref.path
+                    }
+                });
+            }).flat();
+        }
     }
 };
