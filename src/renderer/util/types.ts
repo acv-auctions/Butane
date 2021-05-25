@@ -11,7 +11,13 @@ export enum DocumentActionType {
     DUPE, DELETE
 }
 
-export interface TokenLimit {
-    head: string,
-    tail: string
+export interface SqlDelimiter {
+    head: string;
+    tail: string;
+    omit?: boolean
+}
+
+export interface AliasField {
+    field: string;
+    alias: string;
 }

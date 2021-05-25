@@ -59,7 +59,15 @@
         methods: {
 
             async refreshRootCollection() {
-                const collections = await this.firebase.firestore().listCollections();
+
+                let collections;
+
+                try {
+                    collections = await this.firebase.firestore().listCollections();
+                } catch (e) {
+                    console.error(e);
+                    // TODO
+                }
 
                 // Load initial root collection
                 this.collections[0] = {
