@@ -65,6 +65,7 @@
     import { clipboard } from "electron"
     import VJsoneditor from "v-jsoneditor";
     import { remote } from "electron";
+    import FirebaseSQL from "../util/FirebaseSQL";
 
     export default {
         name: "DocumentView",
@@ -147,16 +148,18 @@
 
                 const collectionReference = this.firebase.firestore().collection(collection);
 
-                const doc = this.documentDuplicateIDModel.length ? collectionReference.doc(this.documentDuplicateIDModel) : collectionReference.doc();
+                try {
+                    await FirebaseSQL(`DUPLICATE ${this.documents[this.selectedIndex].id} INTO ${collection}`, this.firebase.firestore());
 
-                await doc.set(currentSelectedDocument.payload);
-
-                this.documentOptionModel = "";
-                this.documentDuplicateCollectionModel = "";
-                this.documentDuplicateIDModel = "";
-                this.submitted = false;
-
-                this.updateStatusMessage(`Document '${currentSelectedDocument.path}' has been duplicated to '${collectionReference.path}/${doc.id}'`, true);
+                    this.updateStatusMessage(`Document '${currentSelectedDocument.path}' has been duplicated to '${collectionReference.path}`, true);
+                } catch (e) {
+                    this.updateStatusMessage(`Error: ${e.message}`, false);
+                } finally {
+                    this.documentOptionModel = "";
+                    this.documentDuplicateCollectionModel = "";
+                    this.documentDuplicateIDModel = "";
+                    this.submitted = false;
+                }
             },
 
             updateCurrentDocumentOption: function(option) {
@@ -164,6 +167,14 @@
             },
 
             onSubmitEditedDocumentButtonClick: async function() {
+
+                const t = (tree: object) => {
+                    for(const key in tree) {
+                        const v = tree[key];
+
+
+                    }
+                };
 
                 const { path } = this.documents[this.selectedIndex];
 
