@@ -1,7 +1,6 @@
-import * as firebase from "firebase-admin";
-import * as startOfDay from "date-fns/start_of_day";
-import * as endOfDay from "date-fns/end_of_day";
-import {AliasField, SqlDelimiter, SqlJoin} from "./types";
+import { firestore } from "firebase-admin";
+import { startOfDay, endOfDay } from "date-fns";
+import {AliasField, SqlDelimiter} from "./types";
 import format from "date-fns/format";
 
 enum FUNCTIONS {
@@ -213,7 +212,7 @@ class Tokens {
 }
 
 export default async function generator(query: string,
-                               firestore: firebase.firestore.Firestore,
+                               firestore: firestore.Firestore,
                                options: { joinPaths?: string[] } = {}) {
 
     const tokens = new Tokens(query);
@@ -357,25 +356,25 @@ export default async function generator(query: string,
 
             rootCollection = tokens.consume();
 
-            const fireQuery: firebase.firestore.Query = firestore.collection(rootCollection);
+            const fireQuery: firestore.Query = firestore.collection(rootCollection);
 
             switch (operation) {
                 case KEYWORDS.DUPLICATE: {
 
-                    const doc = await (fireQuery as firebase.firestore.CollectionReference).doc(documentIdToBeDuplicated).get();
+                    const doc = await (fireQuery as firestore.CollectionReference).doc(documentIdToBeDuplicated).get();
 
                     if(!doc.exists) {
                         throw Error("The provided document does not exist for the given collection.")
                     }
 
-                    const ref: firebase.firestore.DocumentReference = (fireQuery as firebase.firestore.CollectionReference).doc();
+                    const ref: firestore.DocumentReference = (fireQuery as firestore.CollectionReference).doc();
 
                     ref.set(doc.data());
 
                     return null;
                 }
                 case KEYWORDS.INSERT: {
-                    const docRef = (fireQuery as firebase.firestore.CollectionReference).doc();
+                    const docRef = (fireQuery as firestore.CollectionReference).doc();
 
                     await docRef.set(documentBody);
 
@@ -411,7 +410,7 @@ export default async function generator(query: string,
 
     const constraints: {
         field: string;
-        operator: firebase.firestore.Firestore.WhereFilterOp;
+        operator: string;
         value: any;
     }[] = [];
 
@@ -473,7 +472,7 @@ export default async function generator(query: string,
         }
     }
 
-    let fireQuery: firebase.firestore.Query = firestore.collection(rootCollection);
+    let fireQuery: firestore.Query = firestore.collection(rootCollection);
 
     const optionalDocumentId = constraints
         .filter(constraint => {
@@ -488,7 +487,7 @@ export default async function generator(query: string,
             throw Error("Cannot combine filters with 'DOCID'.");
         }
 
-        const doc = await (fireQuery as firebase.firestore.CollectionReference).doc(optionalDocumentId[0]).get();
+        const doc = await (fireQuery as firestore.CollectionReference).doc(optionalDocumentId[0]).get();
 
         if(!doc.exists) {
             throw Error("The provided document does not exist for the given collection.")
@@ -519,7 +518,7 @@ export default async function generator(query: string,
         }
 
         constraints.forEach(constraint => {
-            fireQuery = fireQuery.where(constraint.field, constraint.operator, constraint.value);
+            fireQuery = fireQuery.where(constraint.field, constraint.operator as firestore.WhereFilterOp, constraint.value);
         });
 
         if(orderBy) {

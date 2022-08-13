@@ -64,7 +64,7 @@
     import {DocumentActionType} from "util/types";
     import { clipboard } from "electron"
     import VJsoneditor from "v-jsoneditor";
-    import { remote } from "electron";
+    import { ipcRenderer } from "electron";
     import FirebaseSQL from "../util/FirebaseSQL";
 
     export default {
@@ -134,7 +134,7 @@
                 const result = await remote.dialog.showSaveDialog({
                     filters: [ { name: "CSV", extensions: ["csv"] } ]
                 });
-                const file = remote.getGlobal("createCSVFileFromObjects")(result.filePath, this.documents.map(document => { return document.payload }));
+                const file = await ipcRenderer.invoke("createCSVFileFromObjects", result.filePath, this.documents.map(document => { return document.payload }));
                 this.updateStatusMessage(`Exported results to "${file}"`, true)
             },
 

@@ -1,16 +1,5 @@
 <template>
     <div class="session-container">
-        <div class="action-bar">
-            <button v-if="currentView === SessionViewType.SAVED" v-on:click="switchView(SessionViewType.NEW)" class="button">Create New Session</button>
-            <button v-if="currentView === SessionViewType.NEW"
-                    v-bind:disabled="folderSelectionDialogOpen"
-                    v-on:click="switchView(SessionViewType.SAVED)"
-                    class="button button-outline">Cancel</button>
-            <button v-if="currentView === SessionViewType.NEW"
-                    v-bind:disabled="!form.credentialFilePath || !form.sessionLabel"
-                    v-on:click="onSaveSessionButtonClick()"
-                    class="button">Save</button>
-        </div>
         <div class="session-table-container" v-if="currentView === SessionViewType.SAVED">
             <table v-if="previousSessions.length">
                 <tbody>
@@ -30,23 +19,48 @@
                 </tr>
                 </tbody>
             </table>
-            <h5 v-if="!previousSessions.length">You have no previous sessions.</h5>
+
+          <div v-if="!previousSessions.length" class="terminal-alert">You have no saved sessions.</div>
         </div>
-        <div class="m-t-10" v-if="currentView === SessionViewType.NEW">
+        <div v-if="currentView === SessionViewType.NEW">
+            <h3>Create new session</h3>
             <form>
-                <label>Session Label</label>
-                <input class="m-b-10" v-model="form.sessionLabel" maxlength="30" type="text">
-                <label>Credential File Path</label>
-                <input ref="folderSelectorInput" v-model="form.credentialFilePath" v-on:focus="openFolderSelectorDialog()" placeholder="Click to browse" type="text">
+                <div class="form-group">
+                  <label>
+                    Session label
+                    <input placeholder="Enter a name" v-model="form.sessionLabel" maxlength="30" type="text">
+                  </label>
+                </div>
+                <div class="form-group">
+                  <label>
+                    Service account key
+                    <input ref="folderSelectorInput" v-model="form.credentialFilePath" v-on:focus="openFolderSelectorDialog()" placeholder="Browse to file" type="text">
+                  </label>
+                </div>
             </form>
         </div>
+
+      <div>
+        <button v-if="currentView === SessionViewType.SAVED" v-on:click="switchView(SessionViewType.NEW)" class="btn btn-block btn-primary">Create New Session</button>
+        <div v-if="currentView === SessionViewType.NEW" class="create-session-button-container">
+          <button
+                  v-bind:disabled="folderSelectionDialogOpen"
+                  v-on:click="switchView(SessionViewType.SAVED)"
+                  class="btn btn-error">Cancel</button>
+          <button
+                  v-bind:disabled="!form.credentialFilePath || !form.sessionLabel"
+                  v-on:click="onSaveSessionButtonClick()"
+                  class="btn btn-primary">Save</button>
+        </div>
+      </div>
 
     </div>
 </template>
 
-<script>
+<script type="ts">
     import { SessionViewType } from "util/types";
-    import { remote } from "electron";
+    import Path from "path";
+    import { ipcRenderer } from "electron";
 
     export default {
         name: "Session",
@@ -76,7 +90,7 @@
             },
 
             getFileNameFromPath: function(path) {
-                return remote.require("path").basename(path);
+                return Path.basename(path);
             },
 
             resetFormModels: function() {
@@ -112,23 +126,23 @@
                 this.switchView(SessionViewType.SAVED)
             },
 
-            openFolderSelectorDialog: function() {
+            openFolderSelectorDialog: async function() {
 
                 this.folderSelectionDialogOpen = true;
                 this.$refs['folderSelectorInput'].blur();
 
-                remote.dialog.showOpenDialog(null, {
-                    properties: [ "openFile" ]
-                }, paths => {
+                const { filePaths } = await ipcRenderer.invoke("openDialog", {
+                  properties: [ "openFile" ],
+                  filters: [{ name: 'Firebase service account', extensions: ['json'] }]
+                });
 
-                    this.folderSelectionDialogOpen = false;
+                this.folderSelectionDialogOpen = false;
 
-                    if(!paths) {
-                        return;
-                    }
+                if(!filePaths.length) {
+                  return;
+                }
 
-                    this.form.credentialFilePath = paths[0];
-                })
+                this.form.credentialFilePath = filePaths[0];
             },
 
             onSessionConfirmClick: function(index) {

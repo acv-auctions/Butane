@@ -3,24 +3,24 @@
 // Any environment-specific changes should be performed in their respective environment files.
 ///////////////////////////////////////////////////////////////////////////////
 
-const path = require('path');
-const VueLoaderPlugin = require('vue-loader/lib/plugin');
+const { resolve } = require('path');
+const { VueLoaderPlugin } = require('vue-loader');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const Dotenv = require('dotenv-webpack');
+const polyfillPlugin = require("node-polyfill-webpack-plugin");
 
 module.exports = {
     entry: './src/renderer/entry-point.ts',
     target: "electron-renderer",
     output: {
-        path: path.resolve(__dirname, 'dist', 'renderer'),
+        path: resolve(__dirname, 'dist', 'renderer'),
         filename: 'renderer.js'
     },
     resolve: {
         alias: {
-            css: path.resolve(__dirname, "src/renderer/css"),
-            component: path.resolve(__dirname, "src/renderer/component"),
-            img: path.resolve(__dirname, "src/renderer/img"),
-            util: path.resolve(__dirname, "src/renderer/util")
+            css: resolve(__dirname, "src/renderer/css"),
+            component: resolve(__dirname, "src/renderer/component"),
+            img: resolve(__dirname, "src/renderer/img"),
+            util: resolve(__dirname, "src/renderer/util")
         },
         extensions: ['.vue', '.js', '.ts']
     },
@@ -45,7 +45,9 @@ module.exports = {
                                 ["@babel/preset-env", {
                                     targets: { "node": true }
                                 }],
-                                'babel-preset-typescript-vue'
+                                ['babel-preset-typescript-vue3', {
+                                    optimizeConstEnums: true
+                                }]
                             ]
                         }
                     }
@@ -69,8 +71,12 @@ module.exports = {
     },
     plugins: [
         new VueLoaderPlugin(),
-        new HtmlWebpackPlugin({
-            template: "src/renderer/index.html",
+        new HtmlWebpackPlugin(),
+        new polyfillPlugin({
+            includeAliases: ["path"]
         })
-    ]
+    ],
+    node: {
+        global: true
+    }
 };

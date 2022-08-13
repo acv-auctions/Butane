@@ -1,12 +1,12 @@
 {
   "compileOnSave": false,
   "compilerOptions": {
-    "module": "commonjs",
+    "module": "ESNext",
     "outDir": "./dist/main",
     "rootDir": "src",
     "baseUrl": ".",
     "moduleResolution": "node",
-    "target": "es2017",
+    "target": "esnext",
     "types": ["node"],
     "removeComments": true,
     "preserveConstEnums": true,

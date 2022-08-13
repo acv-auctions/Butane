@@ -24,7 +24,7 @@
 <script lang="ts">
     import Main from "component/Main";
     import Session from "component/Session";
-    import { remote } from "electron";
+    import { ipcRenderer } from "electron";
 
     export default {
         name: "Tabs",
@@ -50,7 +50,7 @@
                 this.error = null;
 
                 try {
-                    this.fireInstance[this.currentTabIndex] = await remote.getGlobal("createFirebaseInstance")(path, `${label}_${this.currentTabIndex}`);
+                  this.fireInstance[this.currentTabIndex] = await ipcRenderer.invoke("createFirebaseInstance", path, `${label}_${this.currentTabIndex}`);
                 } catch (e) {
                     this.error = e.message;
                     return;
@@ -71,7 +71,7 @@
             onTabCloseClick: function(index) {
 
                 if(this.fireInstance[index]) {
-                    remote.getGlobal("deleteFirebaseInstance")(this.fireInstance[index].name);
+                    ipcRenderer.invoke("deleteFirebaseInstance", this.fireInstance[index].name);
                 }
 
                 this.fireInstance.splice(index, 1);
