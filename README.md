@@ -1,22 +1,35 @@
-# Firebase Electron Client (Working Title)
+# Butane
 
-Firebase Electron Client is an Electron application that wraps around
-Firebase's admin SDK to make management of collections and documents
+Butane is an Electron application that wraps around the
+Firebase admin SDK to make management of collections and documents
 a little easier. It exposes an "SQL-like" DSL for creating, updating,
 and deleting documents, along with sorting and filtering.
 
 ### Currently, the DSL is fragile and lacking documentation. It is highly recommended not to execute queries against production projects.
 
-Before starting, you'll need a service account credentials file
-for a Firebase project. This can be found via your project's settings
-page under the "Service accounts" tab. **This file should be treated
-as a private key.**
+## Getting started
+
+You'll need a service account with the `Firebase Admin` role associated with your Firebase project, along with a private key file generated when creating a key under the service account.
+
+See https://cloud.google.com/iam/docs/creating-managing-service-accounts for information about creating service accounts.
+
+It's highly recommended that you create a separate service account specifically for Butane, rather than creating a new key under an existing service account.
+
+#### Do not share your private key with anyone! Your private key gives you complete control over your Firebase project!
+
+If you must share access to a Firebase project, e.g. multiple users using Butane, it's recommended that you create a new service account per user and only allow a narrow scope of permissions, e.g. reading but not writing documents. This will break some functionality within Butane, but it's much more secure than giving full access.  
 
 ## Running locally
 
-1. Clone the repository
-2. Navigate to the directory containing the repository and run `npm install`
-3. Run the following scripts via NPM: `build-electron-renderer-prod`, `start-local-server`, and `start-electron`
+1. Install dependencies using `npm i`
+2. Execute `npm run`:
+    1. `build-electron-main-dev`
+    2. `start-local-server`
+    3. `start-electron`
+    
+## Building for production
+
+TODO
 
 ## License
 
