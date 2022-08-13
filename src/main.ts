@@ -1,10 +1,8 @@
-import { BrowserWindow, app } from "electron";
-import * as firebase from "firebase-admin";
+import { initializeApp, credential } from "firebase-admin";
 import { readFile } from "fs";
 import ObjectsToCSV from "objects-to-csv";
-import * as path from "path";
-
-declare var global;
+import * as Path from "path";
+import {ipcMain, BrowserWindow, app, dialog} from "electron";
 
 // Object used for mapping instance sessions.
 const fireInstances = {};
@@ -16,47 +14,24 @@ const fireInstances = {};
  * @param name Name of the session
  * @returns A new Firebase instance
  */
-global.createFirebaseInstance = async (path, name) => {
-
+ipcMain.handle("createFirebaseInstance", async (event, path, name) => {
     if(fireInstances[name]) {
         fireInstances[name].delete();
     }
 
-    let certificate: any;
-    let contentsAtPath;
-
     try {
-        contentsAtPath = await new Promise((accept, reject) => {
-            readFile(path, { encoding: 'utf-8' }, (error, data) => {
-                if(error) {
-                    reject();
-                }
-
-                accept(data);
-            });
-        }) as string;
-    } catch (e) {
-        throw new Error("Could not read file at given path. Perhaps it was moved?");
-    }
-
-    try {
-        certificate = JSON.parse(contentsAtPath);
-    } catch (e) {
-        throw new Error("Invalid JSON format.");
-    }
-
-    try {
-        fireInstances[name] = firebase.initializeApp({
-            credential: firebase.credential.cert(certificate),
+        fireInstances[name] = initializeApp({
+            credential: credential.cert(path),
         }, `${name}`);
     } catch (e) {
+        console.error(e);
         throw new Error("Error parsing credentials file. Ensure that the file is correct.");
     }
 
     return fireInstances[name];
-};
+});
 
-global.deleteFirebaseInstance = async (name) => {
+ipcMain.handle("deleteFirebaseInstance", (event, name) => {
 
     if(!fireInstances[name]) {
         return;
@@ -64,12 +39,16 @@ global.deleteFirebaseInstance = async (name) => {
 
     fireInstances[name].delete();
     delete fireInstances[name];
-};
+});
 
-global.createCSVFileFromObjects = (filepath: string, contents: object[]) => {
+ipcMain.handle("createCSVFileFromObjects", (event, filepath: string, contents: object[]) => {
     new ObjectsToCSV(contents).toDisk(filepath, { allColumns: true });
-    return path.basename(filepath)
-};
+    return Path.basename(filepath)
+});
+
+ipcMain.handle("openDialog", (event, options: any) => {
+    return dialog.showOpenDialog(null, options)
+});
 
 let mainWindow = null;
 
@@ -78,7 +57,8 @@ function createMainWindow () {
         'minHeight': 768,
         'minWidth': 1024,
         webPreferences: {
-            nodeIntegration: true
+            nodeIntegration: true,
+            contextIsolation: false
         }
     });
 

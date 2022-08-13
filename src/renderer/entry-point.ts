@@ -1,30 +1,27 @@
-import Vue from "vue";
+import { createApp } from "vue";
 import Tabs from "component/Tabs";
 import { shell } from "electron";
 
 import "./css/index.scss";
 
-new Vue({
-    data: {},
-    el: "#entry",
-    render: h => h(Tabs),
-    mounted: function() {
+const app = createApp(Tabs);
 
-        // Open any valid links in external web browser
-        this.$el.addEventListener("click", e => {
-            const target = e.target as HTMLElement;
+const el = document.querySelector("body");
 
-            if(target.tagName === "A") {
-                e.preventDefault();
+el.addEventListener("click", e => {
+    const target = e.target as HTMLElement;
 
-                try {
-                    const url = new URL(target.getAttribute("href"));
+    if(target.tagName === "A") {
+        e.preventDefault();
 
-                    shell.openExternal(url.toString());
-                } catch (e) {
-                    // Do nothing
-                }
-            }
-        });
+        try {
+            const url = new URL(target.getAttribute("href"));
+
+            shell.openExternal(url.toString());
+        } catch (e) {
+            // Do nothing
+        }
     }
-});
+})
+
+app.mount(el);
