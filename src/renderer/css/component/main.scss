@@ -1,8 +1,8 @@
-@import "~milligram/src/Color";
+//@import "~milligram/src/Color";
 @import "../variables";
 
 .main-container {
-  height: calc(100vh - #{$tab-bar-container-height});
+  height: calc(100vh - #{$tab-bar-height} - #{$title-bar-height});
   width: 100vw;
   padding: $main-container-padding;
   overflow: hidden;

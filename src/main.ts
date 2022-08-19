@@ -1,8 +1,8 @@
-import { initializeApp, credential } from "firebase-admin";
-import { readFile } from "fs";
+import * as Firebase from "firebase-admin";
 import ObjectsToCSV from "objects-to-csv";
-import * as Path from "path";
+import { basename } from "path";
 import {ipcMain, BrowserWindow, app, dialog} from "electron";
+import shortId from "shortid-36";
 
 // Object used for mapping instance sessions.
 const fireInstances = {};
@@ -14,21 +14,23 @@ const fireInstances = {};
  * @param name Name of the session
  * @returns A new Firebase instance
  */
-ipcMain.handle("createFirebaseInstance", async (event, path, name) => {
-    if(fireInstances[name]) {
-        fireInstances[name].delete();
-    }
+ipcMain.handle("createFirebaseInstance", (event, privateKeyFilePath) => {
+    while(true) {
+        let id = shortId.generate();
 
-    try {
-        fireInstances[name] = initializeApp({
-            credential: credential.cert(path),
-        }, `${name}`);
-    } catch (e) {
-        console.error(e);
-        throw new Error("Error parsing credentials file. Ensure that the file is correct.");
-    }
+        if(!fireInstances[id]) {
+            try {
+                fireInstances[id] = Firebase.initializeApp({
+                    credential: Firebase.credential.cert(privateKeyFilePath),
+                }, id);
 
-    return fireInstances[name];
+                return id;
+            } catch (e) {
+                console.error(e);
+                throw new Error("Error parsing credentials file. Ensure that the file is correct.");
+            }
+        }
+    }
 });
 
 ipcMain.handle("deleteFirebaseInstance", (event, name) => {
@@ -43,7 +45,7 @@ ipcMain.handle("deleteFirebaseInstance", (event, name) => {
 
 ipcMain.handle("createCSVFileFromObjects", (event, filepath: string, contents: object[]) => {
     new ObjectsToCSV(contents).toDisk(filepath, { allColumns: true });
-    return Path.basename(filepath)
+    return basename(filepath)
 });
 
 ipcMain.handle("openDialog", (event, options: any) => {
@@ -56,6 +58,8 @@ function createMainWindow () {
     mainWindow = new BrowserWindow({
         'minHeight': 768,
         'minWidth': 1024,
+        transparent: true,
+        frame: false,
         webPreferences: {
             nodeIntegration: true,
             contextIsolation: false

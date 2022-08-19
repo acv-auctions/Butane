@@ -19,10 +19,10 @@ module.exports = {
         alias: {
             css: resolve(__dirname, "src/renderer/css"),
             component: resolve(__dirname, "src/renderer/component"),
-            img: resolve(__dirname, "src/renderer/img"),
+            static: resolve(__dirname, "src/renderer/static"),
             util: resolve(__dirname, "src/renderer/util")
         },
-        extensions: ['.vue', '.js', '.ts']
+        extensions: ['.vue', '.ts', '.js']
     },
     module: {
         rules: [
@@ -31,24 +31,29 @@ module.exports = {
                 use: [
                     'vue-style-loader',
                     'css-loader',
-                    'sass-loader',
+                    {
+                        loader: 'postcss-loader',
+                        options: {
+                            postcssOptions: {
+                                plugins: {
+                                    tailwindcss: {},
+                                    autoprefixer: {}
+                                }
+                            }
+                        }
+                    },
+                    'sass-loader'
                 ]
             },
             {
+                test: /\.ts$/,
                 exclude: /(node_modules)/,
-                test: /\.(ts|js)$/,
                 use: [
                     {
-                        loader: 'babel-loader',
+                        loader: 'ts-loader',
                         options: {
-                            presets: [
-                                ["@babel/preset-env", {
-                                    targets: { "node": true }
-                                }],
-                                ['babel-preset-typescript-vue3', {
-                                    optimizeConstEnums: true
-                                }]
-                            ]
+                            transpileOnly: true,
+                            appendTsSuffixTo: [/\.vue$/]
                         }
                     }
                 ]
@@ -60,12 +65,11 @@ module.exports = {
             },
             {
                 test: /\.(png|jpe?g|gif|svg)$/,
-                use: [
-                    {
-                        loader: 'file-loader',
-                        options: {},
-                    },
-                ],
+                type: "asset/resource"
+            },
+            {
+                test: /\.(otf|ttf|woff|woff2|eot)$/,
+                type: "asset/resource"
             }
         ]
     },

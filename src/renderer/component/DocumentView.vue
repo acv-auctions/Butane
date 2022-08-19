@@ -59,13 +59,11 @@
 </template>
 
 <script lang="ts">
-
-    import fileCopyIcon from "img/file-copy.svg";
     import {DocumentActionType} from "util/types";
     import { clipboard } from "electron"
     import VJsoneditor from "v-jsoneditor";
     import { ipcRenderer } from "electron";
-    import FirebaseSQL from "../util/FirebaseSQL";
+    import FirebaseSQL from "util/FirebaseSQL";
 
     export default {
         name: "DocumentView",
@@ -79,7 +77,6 @@
         },
         data: function() {
             return {
-                fileCopyIcon,
                 selectedIndex: 0,
                 DocumentActionType: DocumentActionType,
                 documentOptionModel: null,
@@ -131,7 +128,7 @@
             },
 
             onExportToCSVButtonClick: async function() {
-                const result = await remote.dialog.showSaveDialog({
+                const result = await ipcRenderer.invoke("openDialog",{
                     filters: [ { name: "CSV", extensions: ["csv"] } ]
                 });
                 const file = await ipcRenderer.invoke("createCSVFileFromObjects", result.filePath, this.documents.map(document => { return document.payload }));

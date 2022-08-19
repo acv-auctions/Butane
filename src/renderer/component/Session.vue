@@ -1,6 +1,6 @@
 <template>
-    <div class="session-container">
-        <div class="session-table-container" v-if="currentView === SessionViewType.SAVED">
+    <div class="w-96 h-64 flex flex-col justify-between">
+        <template v-if="currentView === SessionViewType.SAVED">
             <table v-if="previousSessions.length">
                 <tbody>
                 <tr v-for="(session, index) in previousSessions">
@@ -19,11 +19,10 @@
                 </tr>
                 </tbody>
             </table>
-
-          <div v-if="!previousSessions.length" class="terminal-alert">You have no saved sessions.</div>
-        </div>
-        <div v-if="currentView === SessionViewType.NEW">
-            <h3>Create new session</h3>
+          <div v-else class="text-center text-white p-3">You have no saved sessions.</div>
+        </template>
+        <template v-if="currentView === SessionViewType.NEW">
+            <h2 class="text-white">Create new session</h2>
             <form>
                 <div class="form-group">
                   <label>
@@ -38,20 +37,21 @@
                   </label>
                 </div>
             </form>
-        </div>
+        </template>
 
-      <div>
-        <button v-if="currentView === SessionViewType.SAVED" v-on:click="switchView(SessionViewType.NEW)" class="btn btn-block btn-primary">Create New Session</button>
-        <div v-if="currentView === SessionViewType.NEW" class="create-session-button-container">
-          <button
-                  v-bind:disabled="folderSelectionDialogOpen"
-                  v-on:click="switchView(SessionViewType.SAVED)"
-                  class="btn btn-error">Cancel</button>
-          <button
-                  v-bind:disabled="!form.credentialFilePath || !form.sessionLabel"
-                  v-on:click="onSaveSessionButtonClick()"
-                  class="btn btn-primary">Save</button>
-        </div>
+      <button v-if="currentView === SessionViewType.SAVED"
+              v-on:click="switchView(SessionViewType.NEW)"
+              class="button blue">Create New Session</button>
+
+      <div v-if="currentView === SessionViewType.NEW" class="flex justify-between">
+        <button
+            v-bind:disabled="folderSelectionDialogOpen"
+            v-on:click="switchView(SessionViewType.SAVED)"
+            class="button red">Cancel</button>
+        <button
+            v-bind:disabled="!form.credentialFilePath || !form.sessionLabel"
+            v-on:click="onSaveSessionButtonClick()"
+            class="btn btn-primary">Save</button>
       </div>
 
     </div>
@@ -170,5 +170,28 @@
 </script>
 
 <style lang="scss">
-    @import "../css/component/session.scss";
+.session-container {
+  width: 400px;
+  min-height: 300px;
+  border: 1px solid #d2d2d2;
+  padding: 1em;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+
+  .session-table-container {
+    max-height: 350px;
+    overflow: auto;
+
+    td:last-child {
+      min-width: 200px;
+    }
+  }
+
+  .create-session-button-container {
+    display: flex;
+    justify-content: space-between;
+  }
+}
 </style>

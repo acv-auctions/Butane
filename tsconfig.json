@@ -7,9 +7,15 @@
     "baseUrl": ".",
     "moduleResolution": "node",
     "target": "esnext",
-    "types": ["node"],
+    "types": [],
     "removeComments": true,
     "preserveConstEnums": true,
+    "paths": {
+      "css/*": ["src/renderer/css/*"],
+      "component/*": ["src/renderer/component/*"],
+      "img/*": ["src/renderer/img/*"],
+      "util/*": ["src/renderer/util/*"]
+    },
     "sourceMap": true
   },
   "include": [

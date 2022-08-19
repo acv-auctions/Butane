@@ -1,10 +1,10 @@
 import { createApp } from "vue";
-import Tabs from "component/Tabs";
+import MainWindow from "component/Window";
 import { shell } from "electron";
 
-import "./css/index.scss";
+import "css/index.scss";
 
-const app = createApp(Tabs);
+const app = createApp(MainWindow);
 
 const el = document.querySelector("body");
 

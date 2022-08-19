@@ -1,4 +1,4 @@
-@import "~milligram/src/Color";
+//@import "~milligram/src/Color";
 @import "../variables";
 
 .document-wrapper, .background-container {
@@ -25,13 +25,13 @@
     width: 75vw;
     height: 75vh;
     background: #fff;
-    border: 1px solid $color-primary;
+    //border: 1px solid $color-primary;
     border-radius: 5px;
     display: flex;
 
     .selection {
       width: 30%;
-      border-right: 1px solid $color-primary;
+      //border-right: 1px solid $color-primary;
       overflow: auto;
       display: flex;
       flex-direction: column;

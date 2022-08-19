@@ -3,7 +3,7 @@
         <div v-for="(collection, index) in collections" class="collection animate-fade-in-right">
             <header>
                 <h3>{{collection.id}}</h3>
-                <img v-on:click="onReloadButtonClick(index)" width="25" src="../img/reload.svg" />
+                <img v-on:click="onReloadButtonClick(index)" width="25" src="static/reload.svg" />
             </header>
             <div class="list-container">
                 <ul v-if="collection.list.length" class="styled-default">
@@ -27,6 +27,7 @@
 
 <script lang="ts">
     import {CollectionType} from "util/types";
+    import { firestore } from "firebase-admin";
 
     interface State {
         loadingDocuments: boolean;
@@ -35,7 +36,7 @@
             type: CollectionType;
             id: string;
             list: any[];
-            lastDocument?: firebase.firestore.DocumentReference | null;
+            lastDocument?: firestore.DocumentReference | null;
             endOfDocuments?: boolean;
         }[];
     }

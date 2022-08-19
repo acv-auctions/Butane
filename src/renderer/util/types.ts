@@ -7,6 +7,10 @@ export enum SessionViewType {
     SAVED = "SAVED", NEW = "NEW", DELETE = "DELETE"
 }
 
+export enum TabScene {
+    ROCKET = "ROCKET"
+}
+
 export enum DocumentActionType {
     DUPE, DELETE
 }

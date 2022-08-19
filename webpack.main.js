@@ -17,23 +17,18 @@ module.exports = {
         filename: 'index.js'
     },
     resolve: {
-        extensions: ['.ts']
+        extensions: ['.ts', '.js']
     },
     module: {
         rules: [
             {
                 exclude: /(node_modules)/,
-                test: /\.(ts|js)$/,
+                test: /\.ts$/,
                 use: [
                     {
-                        loader: 'babel-loader',
+                        loader: 'ts-loader',
                         options: {
-                            presets: [
-                                ["@babel/preset-env", {
-                                    targets: { "node": true }
-                                }],
-                                '@babel/preset-typescript'
-                            ]
+                            transpileOnly: true
                         }
                     }
                 ]
