@@ -6,7 +6,7 @@
 const webpack = require("webpack");
 const path = require('path');
 const nodeExternals = require('webpack-node-externals');
-const Dotenv = require("dotenv-webpack");
+//const Dotenv = require("dotenv-webpack");
 
 module.exports = {
     entry: './src/main.ts',
@@ -17,6 +17,9 @@ module.exports = {
         filename: 'index.js'
     },
     resolve: {
+        alias: {
+            util: path.resolve(__dirname, "src/util")
+        },
         extensions: ['.ts', '.js']
     },
     module: {

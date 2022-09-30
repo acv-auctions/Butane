@@ -3,16 +3,15 @@
         <template v-if="currentView === SessionViewType.SAVED">
             <table v-if="previousSessions.length">
                 <tbody>
-                <tr v-for="(session, index) in previousSessions">
-                    <td>
-                        <div>{{ session.label }}</div>
-                        <small>{{ getFileNameFromPath(session.credential_path) }}</small>
-                    </td>
-                    <td class="text-right">
-                        <button v-on:click="onSessionConfirmClick(index)" class="button-small m-r-10">
-                            SELECT
+                <tr class="p-4 pl-8" v-for="(session, index) in previousSessions">
+                    <td class="pr-2">
+                        <button v-on:click="onSessionConfirmClick(index)" class="hover:bg-gray-800 p-1 text-left block w-full">
+                          <div class="text-white">{{ session.label }}</div>
+                          <small class="text-white">{{ getFileNameFromPath(session.credential_path) }}</small>
                         </button>
-                        <button v-on:click="onSessionDeleteClick(index)" class="button-small button-error m-r-10">
+                    </td>
+                    <td >
+                        <button v-on:click="onSessionDeleteClick(index)" class="button red small block">
                             DELETE
                         </button>
                     </td>
@@ -24,18 +23,8 @@
         <template v-if="currentView === SessionViewType.NEW">
             <h2 class="text-white">Create new session</h2>
             <form>
-                <div class="form-group">
-                  <label>
-                    Session label
-                    <input placeholder="Enter a name" v-model="form.sessionLabel" maxlength="30" type="text">
-                  </label>
-                </div>
-                <div class="form-group">
-                  <label>
-                    Service account key
-                    <input ref="folderSelectorInput" v-model="form.credentialFilePath" v-on:focus="openFolderSelectorDialog()" placeholder="Browse to file" type="text">
-                  </label>
-                </div>
+              <input class="p-2 block w-full mb-4 input" aria-label="Session label" placeholder="Session label" v-model="form.sessionLabel" maxlength="30" type="text">
+              <input class="p-2 block w-full input border-dotted border-2 bg-transparent cursor-pointer" ref="folderSelectorInput" aria-label="Browse to file" v-model="form.credentialFilePath" v-on:focus="openFolderSelectorDialog()" placeholder="Browse to file" type="text">
             </form>
         </template>
 
@@ -51,14 +40,15 @@
         <button
             v-bind:disabled="!form.credentialFilePath || !form.sessionLabel"
             v-on:click="onSaveSessionButtonClick()"
-            class="btn btn-primary">Save</button>
+            v-bind:class="{ gray: !form.credentialFilePath || !form.sessionLabel, blue: form.credentialFilePath && form.sessionLabel }"
+            class="button">Save</button>
       </div>
 
     </div>
 </template>
 
 <script type="ts">
-    import { SessionViewType } from "util/types";
+    import { SessionViewType } from "../../util/types";
     import Path from "path";
     import { ipcRenderer } from "electron";
 

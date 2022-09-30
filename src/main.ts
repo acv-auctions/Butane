@@ -3,9 +3,10 @@ import ObjectsToCSV from "objects-to-csv";
 import { basename } from "path";
 import {ipcMain, BrowserWindow, app, dialog} from "electron";
 import shortId from "shortid-36";
+import FirebaseSQL from "./util/FirebaseSQL";
 
 // Object used for mapping instance sessions.
-const fireInstances = {};
+const fireInstances: { [id: string]: Firebase.app.App } = {};
 
 /**
  * Creates a new Firebase instance using the specified credentials and session name.
@@ -33,14 +34,32 @@ ipcMain.handle("createFirebaseInstance", (event, privateKeyFilePath) => {
     }
 });
 
-ipcMain.handle("deleteFirebaseInstance", (event, name) => {
+ipcMain.handle("deleteFirebaseInstance", (event, id) => {
 
-    if(!fireInstances[name]) {
+    if(!fireInstances[id]) {
         return;
     }
 
-    fireInstances[name].delete();
-    delete fireInstances[name];
+    fireInstances[id].delete();
+    delete fireInstances[id];
+});
+
+ipcMain.handle("getRootFirestoreCollections", async (e, id: string) => {
+    if(!fireInstances[id]) {
+        throw new Error(`No Firebase instance associated with ID "${id}"`)
+    }
+
+    const collections = await fireInstances[id].firestore().listCollections();
+
+    return collections.map(v => v.path);
+});
+
+ipcMain.handle("queryFirestore", async (e, id: string, query: string) => {
+    if(!fireInstances[id]) {
+        throw new Error(`No Firebase instance associated with ID "${id}"`)
+    }
+
+    return FirebaseSQL(query, fireInstances[id].firestore());
 });
 
 ipcMain.handle("createCSVFileFromObjects", (event, filepath: string, contents: object[]) => {

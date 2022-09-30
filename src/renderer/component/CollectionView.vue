@@ -1,9 +1,11 @@
 <template>
-    <section class="collection-wrapper">
-        <div v-for="(collection, index) in collections" class="collection animate-fade-in-right">
-            <header>
-                <h3>{{collection.id}}</h3>
-                <img v-on:click="onReloadButtonClick(index)" width="25" src="static/reload.svg" />
+    <div class="flex">
+        <section v-for="(collection, index) in collections" class="w-50 overflow-hidden">
+            <header class="flex align-items-center justify-center">
+                <h3 class="mr-4">{{collection.id}}</h3>
+                <button v-on:click="onReloadButtonClick(index)">
+                  <img width="25" src="../static/reload.svg" />
+                </button>
             </header>
             <div class="list-container">
                 <ul v-if="collection.list.length" class="styled-default">
@@ -21,37 +23,22 @@
                             class="button">Load More</button>
                 </div>
             </div>
-        </div>
-    </section>
+        </section>
+    </div>
 </template>
 
 <script lang="ts">
-    import {CollectionType} from "util/types";
-    import { firestore } from "firebase-admin";
-
-    interface State {
-        loadingDocuments: boolean;
-        CollectionType: CollectionType;
-        collections: {
-            type: CollectionType;
-            id: string;
-            list: any[];
-            lastDocument?: firestore.DocumentReference | null;
-            endOfDocuments?: boolean;
-        }[];
-    }
+    import {FirestoreEntity} from "../../util/types";
+    import { ipcRenderer } from "electron";
 
     export default {
         name: "collectionView",
         data: function() {
             return {
                 loadingDocuments: false,
-                CollectionType: CollectionType,
+                CollectionType: FirestoreEntity,
                 collections: []
-            } as State
-        },
-        props: {
-            firebase: Object
+            }
         },
         inject: ['updateStatusMessage'],
         mounted: async function() {
@@ -61,10 +48,10 @@
 
             async refreshRootCollection() {
 
-                let collections;
+                let rootCollectionPaths;
 
                 try {
-                    collections = await this.firebase.firestore().listCollections();
+                  rootCollectionPaths = await ipcRenderer.invoke("getRootFirestoreCollections", this.$parent.$props.firebaseInstanceId);
                 } catch (e) {
                     console.error(e);
                     // TODO
@@ -72,11 +59,9 @@
 
                 // Load initial root collection
                 this.collections[0] = {
-                    type: CollectionType.COLLECTION,
+                    type: FirestoreEntity.COLLECTION,
                     id: "Root",
-                    list: collections.map(reference => {
-                        return reference.path;
-                    })
+                    list: rootCollectionPaths
                 };
 
                 this.$forceUpdate();
@@ -88,7 +73,7 @@
 
                 switch (item.type) {
 
-                    case CollectionType.DOCUMENTS:
+                    case FirestoreEntity.DOCUMENTS:
 
                         const path = this.collections.slice(1).map(collection => { return collection.id }).join("/");
 
@@ -99,7 +84,7 @@
                         this.$emit("documentSelected", documentSnapshot);
 
                         break;
-                    case CollectionType.COLLECTION:
+                    case FirestoreEntity.COLLECTION:
 
                         let collectionCopy = [ ...this.collections ];
 
@@ -111,7 +96,7 @@
                         }
 
                         collectionCopy.push({
-                            type: CollectionType.DOCUMENTS,
+                            type: FirestoreEntity.DOCUMENTS,
                             id: identifier,
                             list: [],
                             lastDocument: null,

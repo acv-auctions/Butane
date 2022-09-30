@@ -1,13 +1,14 @@
 import { firestore } from "firebase-admin";
 import { startOfDay, endOfDay } from "date-fns";
-import {AliasField, SqlDelimiter} from "./types";
 import format from "date-fns/format";
 
-enum FUNCTIONS {
-    UPPER
+export interface SqlDelimiter {
+    head: string;
+    tail: string;
+    omit?: boolean
 }
 
-enum KEYWORDS {
+export enum KEYWORDS {
     SELECT      = "select",
     INSERT      = "insert",
     UPDATE      = "update",
@@ -23,16 +24,6 @@ enum KEYWORDS {
     JOIN        = "join",
     ALIAS       = "alias"
 }
-
-/*const keywordsArray: string[] = [
-    KEYWORDS.SELECT,
-    KEYWORDS.UPDATE,
-    KEYWORDS.DELETE,
-    KEYWORDS.FROM,
-    KEYWORDS.WHERE,
-    KEYWORDS.AND,
-    KEYWORDS.OR
-];*/
 
 const tokenToType = (tokens: Tokens) => {
 
@@ -258,7 +249,6 @@ export default async function generator(query: string,
 
                     aliasedFields[columns[0]] = columns[1];
                     selectFields.push(columns[0]);
-                    console.log(aliasedFields);
                     continue;
 
                 } else if(nextToken.toLowerCase() === KEYWORDS.FROM) {
@@ -535,10 +525,10 @@ export default async function generator(query: string,
             if(constraints.length) {
                 result.forEach(document => {
                     document.ref.set(documentBody, { merge: true })
-                })
+                });
             } else {
                 (await firestore.collection(rootCollection).get()).forEach(document => {
-                    document.ref.set(documentBody, { merge: true })
+                    document.ref.set(documentBody, { merge: true });
                 })
             }
         } else {
@@ -595,7 +585,7 @@ export default async function generator(query: string,
                             && typeof property === "object"
                             && property._seconds != null
                             && property._nanoseconds != null) {
-                            combinedPayload[key] = format(new Date(property._seconds * 1000), "MM-DD-YYYY [at] hh:mm:ss A")
+                            combinedPayload[key] = format(new Date(property._seconds * 1000), "PPpp")
                         }
                     }
 

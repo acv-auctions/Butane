@@ -8,4 +8,16 @@
   &.red {
     @apply border-red-800 bg-red-500 hover:bg-red-600;
   }
+
+  &.gray {
+    @apply border-gray-800 bg-gray-500;
+  }
+
+  &.small {
+    @apply text-xs;
+  }
+}
+
+.input {
+  @apply border-b-2 border-solid border-gray-600 text-white focus:outline-none bg-gray-900/70
 }

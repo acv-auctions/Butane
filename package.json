@@ -52,6 +52,8 @@
   },
   "dependencies": {
     "@google-cloud/firestore": "^6.0.0",
+    "@thi.ng/color": "^5.1.11",
+    "cytoscape": "^3.22.1",
     "date-fns": "^2.29.1",
     "electron-settings": "^4.0.2",
     "firebase": "^9.9.2",
@@ -62,7 +64,9 @@
     "spawn-rx": "^3.0.0",
     "typewriter-effect": "^2.19.0",
     "v-jsoneditor": "^1.4.5",
-    "vue": "^3.2.37"
+    "vue": "^3.2.37",
+    "vue-shell": "^1.0.3",
+    "vue3-shell": "^2.0.4"
   },
   "build": {
     "productName": "FireClient",

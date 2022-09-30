@@ -10,6 +10,11 @@
           <div class="flume"></div>
         </div>
       </div>
+      <div v-else class="absolute h-full w-full">
+        <template v-if="live === Scene.MARS">
+          <div class="mars"></div>
+        </template>
+      </div>
     </div>
 
     <button v-on:click="togglePlay()" class="absolute right-5 bottom-5">
@@ -19,7 +24,7 @@
 </template>
 
 <script lang="ts">
-import {TabScene} from "util/types";
+import {TabScene} from "../../util/types";
 import Typewriter from "typewriter-effect/dist/core";
 
 let tw: Typewriter;
@@ -28,8 +33,12 @@ let initialTimeout: number;
 const scenes = [
   {
     type: TabScene.ROCKET,
-    html: "<span class='text-green-500'>INSERT</span> <span class='text-green-500'>INTO</span> space <br/> <span class='text-violet-300'>{ type: 'shuttle', name: 'Discovery', dest: \"ISS\" }</span><span class='hidden'>;</span>"
-  }
+    html: "<span class='text-green-500'>INSERT</span> <span class='text-green-500'>INTO</span> space <br/> <span class='text-violet-300'>{ \"type\": \"shuttle\", \"name\": \"Discovery\", \"dest\": \"ISS\" }</span><span class='hidden'>;</span>"
+  },
+  {
+    type: TabScene.MARS,
+    html: "<span class='text-green-500'>UPDATE</span> planet/earth/moon <br/> <span class='text-green-500'>SET</span> <span class='text-violet-300'>DOCID(planet/earth/mars)</span><span class='hidden'>;</span>"
+  },
 ].map(value => ({ value, sort: Math.random() }))
     .sort((a, b) => a.sort - b.sort)
     .map(({ value }) => value);
@@ -50,6 +59,10 @@ export default {
                 scene = TabScene.ROCKET;
                 duration = getComputedStyle(document.body).getPropertyValue("--scene-rocket-duration");
                 break;
+              case TabScene.MARS:
+                scene = TabScene.MARS;
+                duration = getComputedStyle(document.body).getPropertyValue("--scene-mars-duration");
+                break;
             }
 
             this.live = scene;
@@ -69,7 +82,11 @@ export default {
       },
     });
 
-    tw.typeString("Welcome to Butane").start();
+    tw.typeString("> ")
+        .typeString("<span class='text-green-500'>init</span> <span class='text-blue-200'>Butane</span><br/>")
+        .pauseFor(1500)
+        .typeString("A <span class='text-orange-300'>Firebase Firestore</span> query utility")
+        .start();
 
     initialTimeout = setTimeout(() => {
       if(this.play) {
@@ -95,14 +112,13 @@ export default {
     playNextScene: function() {
       const stageRef = this.$refs["stage"];
 
-      let nextSceneIndex = this.sceneIndex++;
+      const scene = scenes[this.sceneIndex];
 
-      if(nextSceneIndex === scenes.length) {
+      this.sceneIndex += 1;
+
+      if(this.sceneIndex > scenes.length - 1) {
         this.sceneIndex = 0;
-        nextSceneIndex = 0;
       }
-
-      const scene = scenes[nextSceneIndex];
 
       this.rehearsal = scene.type;
 
@@ -135,6 +151,7 @@ export default {
 <style lang="scss">
 :root {
   --scene-rocket-duration: 4s;
+  --scene-mars-duration: 10s;
 }
 </style>
 
@@ -154,6 +171,13 @@ export default {
   75% { opacity: 1 }
   80% { height: 100%; }
   100% { height: 100%; opacity: 0; }
+}
+
+@keyframes mars-oversize {
+  0% {background-image: url("../static/scene/moon.png"); transform: rotate(0deg); left: -64px; top: 10px; width: 24px; height: 24px; }
+  30% { background-image: url("../static/scene/moon.png"); left: 30vw; top: 20px; width: 48px; height: 48px; }
+  60% { background-image: url("../static/scene/mars.png"); left: 60vw; top: 20px; width: 400px; height: 400px; }
+  100% { background-image: url("../static/scene/mars.png"); transform: rotate(150deg); left: 100vw; top: 20px; width: 600px; height: 600px; }
 }
 
 @import "../css/variables";
@@ -197,5 +221,12 @@ export default {
     width: 36px;
     background: linear-gradient(90deg, rgba(255,100,4,1) 0%, rgba(255,193,193,1) 50%, rgba(255,100,4,1) 100%);
   }
+}
+
+.mars {
+  position: relative;
+  animation: mars-oversize linear var(--scene-mars-duration);
+  background-size: contain;
+  background-repeat: no-repeat;
 }
 </style>

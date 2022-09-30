@@ -1,69 +1,73 @@
 <template>
-    <section class="document-wrapper">
-        <div @click="dissmiss" class="background-container"></div>
-        <div class="content-container animate-fade-in-up">
-            <div class="selection">
-                <div>
-                    <button @click="onExportToCSVButtonClick" class="button">Export to CSV</button>
-                </div>
-                <ul class="styled-default">
-                    <li v-bind:class="{ selected: selectedIndex === index }"
-                        v-for="(doc, index) in documents"
-                        v-on:click="onItemClick(index)">
-                        <span>{{ doc.id }}</span>
-                    </li>
-                </ul>
-            </div>
-            <div ref="view-container" class="view">
-                <div>
-                    <div class="document-options">
-                        <button v-on:click="onDocumentCopyButtonClick()" class="button button-clear">Copy ID</button>
-                        <button v-bind:disabled="submitted" v-on:click="updateCurrentDocumentOption(DocumentActionType.DUPE)" class="button button-clear">Duplicate</button>
-                        <button v-bind:disabled="submitted" v-on:click="updateCurrentDocumentOption(DocumentActionType.DELETE)" class="button button-clear">Delete</button>
-                    </div>
-                    <div v-if="documentOptionModel === DocumentActionType.DUPE">
-
-                        <label>Collection</label>
-                        <input v-model="documentDuplicateCollectionModel" placeholder="Leave blank to use this document's parent collection" type="text" />
-
-                        <label class="m-t-10">Document ID</label>
-                        <input v-model="documentDuplicateIDModel" placeholder="Leave blank to use auto-generated ID" type="text" />
-
-                        <div class="m-t-10">
-                            <button v-bind:disabled="submitted" v-on:click="onSubmitDuplicateDocumentButtonClick()" class="button">Confirm</button>
-                            <button v-bind:disabled="submitted" v-on:click="onCancelActionClick()" class="button button-clear">Cancel</button>
-                        </div>
-                    </div>
-
-                    <div v-if="documentOptionModel === DocumentActionType.DELETE">
-                        <p class="text-error">
-                            Are you sure you want to delete this document? This cannot be undone; perhaps consider moving it into a separate collection?
-                        </p>
-                        <div class="m-t-10">
-                            <button v-bind:disabled="submitted" v-on:click="onSubmitDeleteDocumentButtonClick()" class="button">Yes</button>
-                            <button v-on:click="onCancelActionClick()" class="button">No</button>
-                        </div>
-                    </div>
-                </div>
-                <VJsoneditor @error="onEditorModelError" :plus="false" v-model="documentEditPayloadCopy" />
-                <div v-if="!documentEditModelValid">
-                    <small class="text-error">There's an error in the JSON structure. Correct it, or click 'Revert' to return to the previously valid state.</small>
-                </div>
-                <div class="m-t-10">
-                    <button v-bind:disabled="submitted || !documentEditModelValid" v-on:click="onSubmitEditedDocumentButtonClick()" class="button">Save</button>
-                    <button v-bind:disabled="submitted" v-on:click="resetEditorModel()" class="button button-clear">Revert</button>
-                </div>
-            </div>
+  <div ref="parent" @click="dismiss($event)" class="bg-black/70 absolute w-full h-full flex justify-center items-center">
+    <div class="backdrop-blur-sm bg-slate-900/20 w-5/6 h-5/6 p-3 flex border-solid border border-gray-800">
+      <section class="flex flex-col">
+        <h3 class="text-white text-center mb-3">
+          {{ documents.length }} doc(s)
+        </h3>
+        <div class="flex-1 overflow-auto h-full pr-3">
+          <ul>
+            <li class="mb-2 cursor-pointer" :class="{ selected: selectedIndex === index }"
+                v-for="(doc, index) in documents"
+                v-on:click="onItemClick(index)">
+            <span :class="{
+              'text-green-500': selectedIndex === index,
+              'text-white': selectedIndex !== index,
+              'hover:text-green-200': selectedIndex !== index
+            }">{{ doc.id }}</span>
+            </li>
+          </ul>
         </div>
-    </section>
+      </section>
+      <section class="pl-10">
+        <div>
+          <div>
+            <button v-on:click="onDocumentCopyButtonClick()">Copy ID</button>
+            <button v-bind:disabled="submitted" v-on:click="updateCurrentDocumentOption(DocumentActionType.DUPE)">Duplicate</button>
+            <button v-bind:disabled="submitted" v-on:click="updateCurrentDocumentOption(DocumentActionType.DELETE)">Delete</button>
+          </div>
+          <div v-if="documentOptionModel === DocumentActionType.DUPE">
+
+            <label>Collection</label>
+            <input v-model="documentDuplicateCollectionModel" placeholder="Leave blank to use this document's parent collection" type="text" />
+
+            <label class="m-t-10">Document ID</label>
+            <input v-model="documentDuplicateIDModel" placeholder="Leave blank to use auto-generated ID" type="text" />
+
+            <div class="m-t-10">
+              <button v-bind:disabled="submitted" v-on:click="onSubmitDuplicateDocumentButtonClick()" class="button">Confirm</button>
+              <button v-bind:disabled="submitted" v-on:click="onCancelActionClick()" class="button button-clear">Cancel</button>
+            </div>
+          </div>
+
+          <div v-if="documentOptionModel === DocumentActionType.DELETE">
+            <p class="text-error">
+              Are you sure you want to delete this document? This cannot be undone; perhaps consider moving it into a separate collection?
+            </p>
+            <div class="m-t-10">
+              <button v-bind:disabled="submitted" v-on:click="onSubmitDeleteDocumentButtonClick()" class="button">Yes</button>
+              <button v-on:click="onCancelActionClick()" class="button">No</button>
+            </div>
+          </div>
+        </div>
+        <div v-if="!documentEditModelValid">
+          <small class="text-error">There's an error in the JSON structure. Correct it, or click 'Revert' to return to the previously valid state.</small>
+        </div>
+        <div class="m-t-10">
+          <button v-bind:disabled="submitted || !documentEditModelValid" v-on:click="onSubmitEditedDocumentButtonClick()" class="button">Save</button>
+          <button v-bind:disabled="submitted" v-on:click="resetEditorModel()" class="button button-clear">Revert</button>
+        </div>
+      </section>
+    </div>
+  </div>
 </template>
 
 <script lang="ts">
-    import {DocumentActionType} from "util/types";
+    import {DocumentActionType} from "../../util/types";
     import { clipboard } from "electron"
     import VJsoneditor from "v-jsoneditor";
     import { ipcRenderer } from "electron";
-    import FirebaseSQL from "util/FirebaseSQL";
+    import FirebaseSQL from "../../util/FirebaseSQL";
 
     export default {
         name: "DocumentView",
@@ -87,7 +91,7 @@
                 submitted: false,
             }
         },
-        watch: {
+        /*watch: {
             documents: function(newVal, oldVal) {
                 this.selectedIndex = 0;
                 this.onItemClick(this.selectedIndex);
@@ -95,16 +99,19 @@
             documentEditPayloadCopy: function() {
                 this.documentEditModelValid = true;
             }
-        },
+        },*/
 
         mounted: function() {
-            this.resetEditorModel();
+            //this.resetEditorModel();
         },
 
         methods: {
 
-            dissmiss: function() {
+            dismiss: function(event) {
+              const { target } = event;
+              if(target === this.$refs.parent) {
                 this.$emit("dismissDocumentView")
+              }
             },
 
             onItemClick: function(index) {
@@ -205,5 +212,5 @@
 </script>
 
 <style lang="scss">
-    @import "../css/component/document_view";
+
 </style>

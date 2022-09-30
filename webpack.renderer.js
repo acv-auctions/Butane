@@ -20,14 +20,14 @@ module.exports = {
             css: resolve(__dirname, "src/renderer/css"),
             component: resolve(__dirname, "src/renderer/component"),
             static: resolve(__dirname, "src/renderer/static"),
-            util: resolve(__dirname, "src/renderer/util")
+            util: resolve(__dirname, "src/util")
         },
         extensions: ['.vue', '.ts', '.js']
     },
     module: {
         rules: [
             {
-                test: /\.scss$/,
+                test: /\.s?css$/,
                 use: [
                     'vue-style-loader',
                     'css-loader',
@@ -60,7 +60,7 @@ module.exports = {
             },
             {
                 test: /\.vue$/,
-                exclude: /(node_modules)/,
+                //exclude: /(node_modules)/,
                 loader: 'vue-loader'
             },
             {

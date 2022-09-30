@@ -1,16 +1,17 @@
 <template>
   <div class="h-full">
     <div class="tab-bar bg-black border-b border-gray-900 border-solid flex">
-      <div class="flex flex-1 items-end pl-2">
+      <div class="flex overflow-hidden flex-1 items-end pl-2">
         <button v-on:click="onTabClick(index)"
-                class="w-24 flex justify-around items-center h-5/6 rounded-tl-md rounded-tr-md text-center relative"
+                :title="instance ? instance.label : 'New Tab'"
+                class="pl-2 pr-2 mr-2 w-[300px] flex justify-between items-center h-5/6 rounded-tl-md rounded-tr-md relative"
                 v-bind:class="{ 'bg-gray-900': index === currentTabIndex, 'bg-slate-700': index !== currentTabIndex }" v-for="(instance, index) of tabInstances">
-          <small class="text-white pointer-events-none">{{ instance ? instance.label : "New Tab" }}</small>
-          <button class="z-10 hover:bg-black" v-on:click="onTabCloseClick(index)">
-            <img alt="Close tab" width="15" src="../static/close-white.png"/>
+          <small class="text-white max-w-[150px] mr-4 overflow-hidden whitespace-nowrap pointer-events-none">{{ instance ? instance.label : "New Tab" }}</small>
+          <button class="z-10 hover:bg-red-700 bg-orange-800 w-[16px] h-[16px] text-center" v-on:click="onTabCloseClick(index)">
+            <img alt="Close tab" src="../static/close-white.png"/>
           </button>
         </button>
-        <button v-on:click="onAddTabClick()" class="w-10 h-5/6 bg-black rounded-tl-md rounded-tr-md flex items-center justify-center">
+        <button v-on:click="onAddTabClick()" class="shrink-0 h-5/6 bg-black rounded-tl-md rounded-tr-md flex items-center justify-center">
           <img alt="Add tab" width="18" src="../static/add-white.png"/>
         </button>
         <div class="dragger w-full h-full"></div>
@@ -27,11 +28,11 @@
     <div class="h-full" v-bind:class="{ 'hidden': tabInstances[currentTabIndex] }">
       <tab-scene :typer-container-ref-name="'typewriter'" />
       <div class="h-full bg-gradient-to-t from-slate-900 to-black flex flex-col justify-center items-center">
-        <div class="z-10 bg-black/50 p-5 border-4 border-solid border-slate-800">
+        <div class="z-10 bg-black/60 p-5 border-4 border-solid border-slate-800">
           <h5 class="error text-center" v-if="error">An error has occurred: {{error}}</h5>
           <session-choose @viewChange="onSessionViewChange" @sessionChosen="onSessionChosen"></session-choose>
         </div>
-        <div class="font-terminal mt-12 text-lg text-white w-96 h-32 bg-black text-center py-2 z-10 pointer-events-none" ref="typewriter"></div>
+        <div class="font-terminal mt-12 text-lg text-white w-96 h-32 bg-black/60 text-center py-2 z-10 pointer-events-none" ref="typewriter"></div>
       </div>
     </div>
 
@@ -77,7 +78,8 @@ export default {
       let generatedId = await ipcRenderer.invoke("createFirebaseInstance", path);
 
       try {
-        this.tabInstances.push({ id: generatedId, "label": `${label}_${generatedId}` });
+        this.tabInstances[this.currentTabIndex] = { id: generatedId, "label": `${label}_${generatedId}` };
+        //this.tabInstances.push({ id: generatedId, "label": `${label}_${generatedId}` });
       } catch (e) {
         this.error = e.message;
         return;
@@ -104,7 +106,7 @@ export default {
       this.tabInstances.splice(index, 1);
 
       if(!this.tabInstances.length) {
-        this.fireInstance.push(null);
+        this.tabInstances.push(null);
         this.currentTabIndex = 0;
       } else if(this.currentTabIndex === index) {
         this.currentTabIndex = index - 1;
