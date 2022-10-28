@@ -170,5 +170,5 @@
 </script>
 
 <style lang="scss">
-    @import "../css/component/collection_view";
+    //@import "../css/component/collection_view";
 </style>

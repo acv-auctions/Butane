@@ -1,16 +1,24 @@
 .button {
-  @apply block text-white border-b-4 p-2 duration-100 ease-in-out;
+  @apply block text-white border-[1px] border-gray-700 p-2 duration-100 ease-in-out hover:bg-gray-700;
+
+  &:disabled {
+    opacity: 50%;
+  }
 
   &.blue {
-    @apply bg-blue-500 border-blue-800 hover:bg-blue-600;
+    @apply hover:border-blue-800 hover:bg-blue-800/60;
   }
 
   &.red {
-    @apply border-red-800 bg-red-500 hover:bg-red-600;
+    @apply hover:border-red-800 hover:bg-red-800/60;
+
+    &.solid {
+      @apply hover:border-red-600 hover:bg-red-600/60 border-red-800 bg-red-800/60;
+    }
   }
 
   &.gray {
-    @apply border-gray-800 bg-gray-500;
+    @apply hover:border-gray-800 hover:bg-gray-800/60;
   }
 
   &.small {
