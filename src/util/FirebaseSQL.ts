@@ -22,7 +22,8 @@ export enum KEYWORDS {
     INTO        = "into",
     LIMIT       = "limit",
     JOIN        = "join",
-    ALIAS       = "alias"
+    ALIAS       = "alias",
+    OVERWRITE   = "overwrite"
 }
 
 const tokenToType = (tokens: Tokens) => {
@@ -206,6 +207,8 @@ export default async function generator(query: string,
                                firestore: firestore.Firestore,
                                options: { joinPaths?: string[] } = {}) {
 
+    console.debug(query);
+
     const tokens = new Tokens(query);
 
     let operation: KEYWORDS.SELECT | KEYWORDS.INSERT | KEYWORDS.UPDATE | KEYWORDS.DELETE | KEYWORDS.DUPLICATE;
@@ -219,6 +222,7 @@ export default async function generator(query: string,
 
     let documentBody = null;
     let documentIdToBeDuplicated = null;
+    let documentUpdateMerge = true;
 
     let limit = null;
 
@@ -316,7 +320,7 @@ export default async function generator(query: string,
         }
 
         default:
-            throw new Error(`Unknown keyword: ${currentKeyword}`);
+            throw new Error(`Unknown verb: ${currentKeyword}`);
     }
 
     currentKeyword = tokens.consume();
@@ -375,7 +379,7 @@ export default async function generator(query: string,
             }
 
         default:
-            throw new Error(`Unexpected token: ${currentKeyword}`);
+            throw new Error(`Unknown modifier: ${currentKeyword}`);
     }
 
     join: while(true) {
@@ -387,6 +391,14 @@ export default async function generator(query: string,
         }
 
         switch (currentKeyword.toLowerCase()) {
+            case KEYWORDS.OVERWRITE:
+                if(operation !== KEYWORDS.UPDATE) {
+                    throw new Error("Overwrite only applicable to update");
+                }
+
+                documentUpdateMerge = false;
+
+                break join;
             case KEYWORDS.JOIN:
 
                 subCollectionQueries.push(tokens.consume({ head: "(", tail: ")", omit: true }));
@@ -458,7 +470,7 @@ export default async function generator(query: string,
                 limit = tokenToType(tokens);
                 break;
             default:
-                throw Error(`Unexpected token: ${nextOptionalToken}`);
+                throw Error(`Unknown constraint: ${nextOptionalToken}`);
         }
     }
 
@@ -483,25 +495,33 @@ export default async function generator(query: string,
             throw Error("The provided document does not exist for the given collection.")
         }
 
-        const documentData = doc.data();
-        let payload = {};
+        switch (operation) {
+            case KEYWORDS.DELETE:
+                await doc.ref.delete();
+                return null;
+            case KEYWORDS.UPDATE:
+                await doc.ref.set(documentBody, { merge: documentUpdateMerge });
+                return null;
+            default:
+                const documentData = doc.data();
+                let filteredDocumentData = {};
 
-        if(rootFields.length) {
-            for(const key of Object.keys(documentData)) {
-                if(rootFields.indexOf(key) !== -1) {
-                    payload[key] = documentData[key];
+                if(rootFields.length) {
+                    for(const key in doc.data()) {
+                        if(rootFields.find(field => field === key)) {
+                            filteredDocumentData[key] = documentData[key];
+                        }
+                    }
+                } else {
+                    filteredDocumentData = documentData;
                 }
-            }
-        } else {
-            payload = documentData;
+
+                return [{
+                    id: doc.id,
+                    payload: filteredDocumentData,
+                    path: doc.ref.path
+                }];
         }
-
-        return [{
-            id: doc.id,
-            payload,
-            path: doc.ref.path
-        }]
-
     } else {
         if(rootFields.length) {
             fireQuery = fireQuery.select(...rootFields);
@@ -524,11 +544,11 @@ export default async function generator(query: string,
         if(operation === KEYWORDS.UPDATE) {
             if(constraints.length) {
                 result.forEach(document => {
-                    document.ref.set(documentBody, { merge: true })
+                    document.ref.set(documentBody, { merge: documentUpdateMerge })
                 });
             } else {
                 (await firestore.collection(rootCollection).get()).forEach(document => {
-                    document.ref.set(documentBody, { merge: true });
+                    document.ref.set(documentBody, { merge: documentUpdateMerge });
                 })
             }
         } else {
