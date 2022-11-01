@@ -54,6 +54,16 @@ ipcMain.handle("getRootFirestoreCollections", async (e, id: string) => {
     return collections.map(v => v.path);
 });
 
+ipcMain.handle("getDocumentSubCollections", async (e, id: string, documentPath: string) => {
+    if(!fireInstances[id]) {
+        throw new Error(`No Firebase instance associated with ID "${id}"`)
+    }
+
+    const collections = await fireInstances[id].firestore().doc(documentPath).listCollections();
+
+    return collections.map(v => `${v.path}/${v.id}`);
+});
+
 ipcMain.handle("queryFirestore", async (e, id: string, query: string) => {
     if(!fireInstances[id]) {
         throw new Error(`No Firebase instance associated with ID "${id}"`)
@@ -69,6 +79,10 @@ ipcMain.handle("createCSVFileFromObjects", (event, filepath: string, contents: o
 
 ipcMain.handle("openDialog", (event, options: any) => {
     return dialog.showOpenDialog(null, options)
+});
+
+ipcMain.handle("showSaveDialog", (event, options: any) => {
+    return dialog.showSaveDialog(null, options)
 });
 
 let mainWindow = null;
