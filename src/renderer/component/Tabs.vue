@@ -26,7 +26,7 @@
     </div>
 
     <div class="h-full" v-bind:class="{ 'hidden': tabInstances[currentTabIndex] }">
-      <tab-scene :typer-container-ref-name="'typewriter'" />
+      <tab-scene :stopScene="tabInstances[currentTabIndex] != null" :typer-container-ref-name="'typewriter'" />
       <div class="h-full bg-gradient-to-t from-slate-900 to-black flex flex-col justify-center items-center">
         <div class="z-10 bg-black/60 p-5 border-4 border-solid border-slate-800">
           <h5 class="error text-center" v-if="error">An error has occurred: {{error}}</h5>
@@ -97,22 +97,18 @@ export default {
       this.currentTabIndex = index;
     },
 
-    onTabCloseClick: function(index) {
+    onTabCloseClick: function(indexToDelete) {
 
-      if(this.tabInstances[index]) {
-        ipcRenderer.invoke("deleteFirebaseInstance", this.tabInstances[index].name);
+      if(this.tabInstances[indexToDelete]) {
+        ipcRenderer.invoke("deleteFirebaseInstance", this.tabInstances[indexToDelete].name);
       }
 
-      this.tabInstances.splice(index, 1);
-
-      if(!this.tabInstances.length) {
-        this.tabInstances.push(null);
-        this.currentTabIndex = 0;
-      } else if(this.currentTabIndex === index) {
-        this.currentTabIndex = index - 1;
-      } else if(index < this.currentTabIndex) {
-        this.currentTabIndex = this.currentTabIndex - 1;
+      if(this.tabInstances.length === 1 && indexToDelete === 0) {
+        this.tabInstances[0] = null;
+        return;
       }
+
+      this.tabInstances.splice(indexToDelete, 1);
     }
   }
 }

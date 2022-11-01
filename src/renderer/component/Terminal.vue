@@ -19,13 +19,16 @@
           &nbsp;
         </span>
         <span class="inline-block relative term-cursor-word-end" :class="{
-          'term-cursor': wordIndex === currentWordIndex && words[currentWordIndex]
+          'term-cursor': wordIndex === currentWordIndex && words[currentWordIndex].value
           ? currentWordPosition === words[currentWordIndex].value.length
           : false }"></span>
       </template>
     </p>
     <!--<div class="cursor absolute left-0 top-[6px]" :style="{ left: `${cursorPosition * 8}px` }"></div> -->
-    <input ref="input" @input="onInput" @keydown="onKeyDown" type="text" class="opacity-0 absolute left-0 top-0 w-full h-full" />
+    <input ref="input"
+           @input="onInput"
+           @paste="onPaste"
+           @keydown="onKeyDown" type="text" class="opacity-0 absolute left-0 top-0 w-full h-full" />
   </div>
 </template>
 
@@ -33,6 +36,7 @@
 
 import TerminalWordFormat from "../../util/TerminalWordFormat";
 import { TerminalWord } from "../../util/types"
+import {markRaw, toRaw} from "vue";
 
 const formatWord = (word: TerminalWord) => {
   if(word.value) {
@@ -50,20 +54,87 @@ const createWord = (val: string | null): TerminalWord => {
 export default {
   data() {
     return {
+      previousQueries: [],
       currentWordIndex: 0,
       currentWordPosition: 0,
-      words: [] as TerminalWord[]
+      words: [] as TerminalWord[],
+      previousQueryIndex: null
     }
   },
   methods: {
+    onPaste: function(event) {
+      const { clipboardData } = event;
+      const clipboardTextData = clipboardData.getData("text");
+      if(!this.words[this.currentWordIndex]) {
+        this.words[this.currentWordIndex] = createWord(clipboardTextData);
+      } else {
+        const currentWordValue = this.words[this.currentWordIndex].value;
+        this.words[this.currentWordIndex].value = `${currentWordValue.slice(0, this.currentWordPosition)}${clipboardTextData}${currentWordValue.slice(this.currentWordPosition - 1)}`;
+      }
+      this.currentWordPosition += clipboardTextData.length + 1;
+    },
     onKeyDown: function(event) {
       const { key } = event;
       const { currentWordPosition, currentWordIndex, words } = this;
 
       switch (key) {
+        case "ArrowDown": {
+
+          if(this.previousQueryIndex === null) {
+            return;
+          }
+
+          if(this.previousQueryIndex + 1 < this.previousQueries.length) {
+            this.previousQueryIndex += 1;
+            this.words = JSON.parse(this.previousQueries[this.previousQueryIndex]);
+            this.currentWordIndex = this.words.length - 1;
+            this.currentWordPosition = this.words[this.currentWordIndex].value ? this.words[this.currentWordIndex].value.length : 0;
+            console.log(this.currentWordIndex, this.currentWordPosition);
+          } else {
+            this.previousQueryIndex = null;
+            this.words = [];
+            this.currentWordIndex = 0;
+            this.currentWordPosition = 0;
+          }
+          break;
+        }
+        case "ArrowUp": {
+
+          console.log(this.previousQueryIndex, this.previousQueries);
+
+          if(!this.previousQueries.length) {
+            return;
+          }
+
+          if(this.previousQueryIndex === null) {
+            this.previousQueryIndex = this.previousQueries.length - 1;
+          } else if(this.previousQueryIndex - 1 >= 0) {
+            this.previousQueryIndex -= 1;
+          } else {
+            return;
+          }
+
+          this.words = JSON.parse(this.previousQueries[this.previousQueryIndex]);
+          this.currentWordIndex = this.words.length - 1;
+          this.currentWordPosition = this.words[this.currentWordIndex].value ? this.words[this.currentWordIndex].value.length : 0;
+          console.log(this.currentWordIndex, this.currentWordPosition);
+
+          break;
+        }
         case "Enter": {
           event.preventDefault();
+
+          this.previousQueries.push(JSON.stringify(this.words));
+
+          if(this.previousQueries.length > 15) {
+            this.previousQueries = this.previousQueries.slice(1);
+          }
+
+          this.previousQueryIndex = null;
+
           this.$emit("querySubmit", this.words.filter(s => s.value).map(s => s.value).join(" "));
+
+          this.reset();
           break;
         }
         case "ArrowLeft": {
@@ -112,7 +183,12 @@ export default {
           break;
         }
       }
-      console.log(this.currentWordIndex, this.currentWordPosition, this.words);
+      //console.log(this.currentWordIndex, this.currentWordPosition, this.words);
+    },
+    reset: function() {
+      this.words = [];
+      this.currentWordPosition = 0;
+      this.currentWordIndex = 0;
     },
     onInput: function(event) {
 
@@ -147,6 +223,7 @@ export default {
 
           this.words = [ ...words, ...this.words.slice(currentWordIndex + 1)];
           this.currentWordIndex += left ? 2 : 1;
+          //this.currentWordIndex += 1;
           this.currentWordPosition = 0;
         } else if(!words[currentWordIndex]
             && words[currentWordIndex - 1]
@@ -163,7 +240,7 @@ export default {
           this.currentWordPosition += 1;
         }
 
-        console.log(this.currentWordIndex, this.currentWordPosition ,words);
+        //console.log(this.currentWordIndex, this.currentWordPosition ,words);
       } else {
 
         const currentWord = words[currentWordIndex];
@@ -181,7 +258,7 @@ export default {
             formatWord(currentWord);
           }
 
-          console.log("Within word", this.currentWordIndex, this.currentWordPosition, this.words);
+          //console.log("Within word", this.currentWordIndex, this.currentWordPosition, this.words);
           return;
         }
 
@@ -197,7 +274,7 @@ export default {
 
           const right = words[this.currentWordIndex + 1];
 
-          console.log(nextWord, right);
+          //console.log(nextWord, right);
 
           if(nextWord && nextWord.value && right && right.value) {
             nextWord.value += right.value;
@@ -205,7 +282,7 @@ export default {
             formatWord(nextWord);
           }
 
-          console.log("Previous value", this.currentWordIndex, this.currentWordPosition, this.words);
+          //console.log("Previous value", this.currentWordIndex, this.currentWordPosition, this.words);
           return;
         }
 
@@ -215,7 +292,7 @@ export default {
           words.splice(currentWordIndex, 1);
         }
 
-        console.log("Just delete", this.currentWordIndex, this.currentWordPosition, this.words);
+        //console.log("Just delete", this.currentWordIndex, this.currentWordPosition, this.words);
       }
     }
   }
@@ -233,9 +310,9 @@ export default {
     content: '';
     position: absolute;
     //display: block;
-    top: 0px;
+    top: 0;
     left: 0;
-    width: 8px;
+    width: 2px;
     height: 18px;
     background: red;
     //animation-name: blink;

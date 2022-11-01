@@ -3,18 +3,20 @@
     <div class="absolute h-full w-full pointer-events-none">
       <div class="absolute w-full h-3/6 glow"></div>
       <img class="absolute opacity-50 -top-96" src="../static/starfield.png"/>
-      <div v-if="live === Scene.ROCKET" class="absolute h-[240vh] -bottom-[100vh] w-24 flex flex-col justify-end" :style="{ 'left': liveParameters.x + 'px' }">
-        <div class="rocket-ship"></div>
-        <div class="exhaust flex justify-around">
-          <div class="flume"></div>
-          <div class="flume"></div>
+      <template v-if="runScene">
+        <div v-if="sceneToPlay === Scene.ROCKET" class="absolute h-[240vh] -bottom-[100vh] w-24 flex flex-col justify-end" :style="{ 'left': sceneParams.x + 'px' }">
+          <div class="rocket-ship"></div>
+          <div class="exhaust flex justify-around">
+            <div class="flume"></div>
+            <div class="flume"></div>
+          </div>
         </div>
-      </div>
-      <div v-else class="absolute h-full w-full">
-        <template v-if="live === Scene.MARS">
-          <div class="mars"></div>
-        </template>
-      </div>
+        <div v-else class="absolute h-full w-full">
+          <template v-if="sceneToPlay === Scene.MARS">
+            <div class="mars"></div>
+          </template>
+        </div>
+      </template>
     </div>
 
     <button v-on:click="togglePlay()" class="absolute right-5 bottom-5">
@@ -28,7 +30,8 @@ import {TabScene} from "../../util/types";
 import Typewriter from "typewriter-effect/dist/core";
 
 let tw: Typewriter;
-let initialTimeout: number;
+let firstSceneTimeout: any;
+let nextSceneTimeout: any;
 
 const scenes = [
   {
@@ -45,35 +48,39 @@ const scenes = [
 
 export default {
   name: "TabScene",
-  props: ["typerContainerRefName"],
+  props: ["typerContainerRefName", "stopScene"],
+  watch: {
+    stopScene: function(oldVal, newVal) {
+      // TODO Probably not needed...
+      if(oldVal !== newVal) {
+        this.togglePlay();
+      }
+    }
+  },
   mounted() {
     tw = new Typewriter(this.$parent.$refs[this.typerContainerRefName], {
       delay: 30,
       onCreateTextNode: (character) => {
         if(character === ";" && this.play) {
-          setTimeout(() => {
+          nextSceneTimeout = setTimeout(() => {
             let duration, scene;
 
-            switch (this.rehearsal) {
+            switch (this.sceneToPlay) {
               case TabScene.ROCKET:
-                scene = TabScene.ROCKET;
                 duration = getComputedStyle(document.body).getPropertyValue("--scene-rocket-duration");
                 break;
               case TabScene.MARS:
-                scene = TabScene.MARS;
                 duration = getComputedStyle(document.body).getPropertyValue("--scene-mars-duration");
                 break;
             }
 
-            this.live = scene;
             const parsedDuration = parseFloat(duration.split("s")[0]);
 
-            setTimeout(() => {
-              this.live = null;
+            this.runScene = true;
 
-              if(this.play) {
-                this.playNextScene();
-              }
+            nextSceneTimeout = setTimeout(() => {
+              this.runScene = false;
+              this.setupNextScene();
             }, parsedDuration * 1000);
           }, 500);
         }
@@ -82,34 +89,34 @@ export default {
       },
     });
 
-    tw.typeString("> ")
-        .typeString("<span class='text-green-500'>init</span> <span class='text-blue-200'>Butane</span><br/>")
+    tw.typeString("<span class='text-green-500'>Welcome to</span> <span class='text-blue-200'>Butane</span><br/>")
         .pauseFor(1500)
         .typeString("A <span class='text-orange-300'>Firebase Firestore</span> query utility")
         .start();
 
-    initialTimeout = setTimeout(() => {
-      if(this.play) {
-        this.clearTyperContainer();
-        this.playNextScene();
-      }
+    firstSceneTimeout = setTimeout(() => {
+      this.setupNextScene();
     }, 5000);
   },
   data: function() {
     return {
       Scene: TabScene,
-      live: null,
-      rehearsal: null,
-      liveParameters: {},
+      sceneToPlay: null,
+      runScene: false,
+      sceneParams: {},
       play: true,
       sceneIndex: 0
     }
   },
   methods: {
+    stopTyper: function() {
+      tw.stop();
+      tw.state.eventQueue = [];
+    },
     clearTyperContainer: function() {
       this.$parent.$refs[this.typerContainerRefName].querySelector(".Typewriter__wrapper").innerHTML = "";
     },
-    playNextScene: function() {
+    setupNextScene: function() {
       const stageRef = this.$refs["stage"];
 
       const scene = scenes[this.sceneIndex];
@@ -120,28 +127,33 @@ export default {
         this.sceneIndex = 0;
       }
 
-      this.rehearsal = scene.type;
-
       switch (scene.type) {
         case TabScene.ROCKET:
           const { width } = stageRef.getBoundingClientRect();
 
-          this.liveParameters = {
+          this.sceneParams = {
             // TODO It's probably better to use the image's width rather than a static number
             x: Math.random() * (width - 100)
           }
           break;
       }
 
+      this.sceneToPlay = scene.type;
+
       this.clearTyperContainer();
 
       tw.typeString(scene.html).start();
     },
     togglePlay: function() {
-      clearInterval(initialTimeout);
       this.play = !this.play;
       if(this.play) {
-        this.playRandomScene();
+        this.setupNextScene();
+      } else {
+        clearInterval(firstSceneTimeout);
+        clearInterval(nextSceneTimeout);
+        this.runScene = false;
+        this.stopTyper();
+        this.clearTyperContainer();
       }
     }
   }

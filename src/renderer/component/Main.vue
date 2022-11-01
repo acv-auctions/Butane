@@ -3,10 +3,14 @@
     <div class="w-full z-10 node-graph" ref="nodeGraph"></div>
     <div class="background bg-gray-900 w-full absolute z-0 left-0"></div>
     <div v-if="documents.length" class="document-view-wrapper w-full absolute z-10 top-0 left-0">
-      <document-view :documents="documents" @dismissDocumentView="onDismissDocumentView"></document-view>
+      <document-view @querySubmit="onQuerySubmission"
+                     :firebaseInstanceId="firebaseInstanceId"
+                     :documents="documents"
+                     @dismissDocumentView="onDismissDocumentView"></document-view>
     </div>
+    <div class="action-history"></div>
     <section class="shell bg-zinc-900">
-      <shell @querySubmit="onQuerySubmission" />
+      <shell ref="shellRef" @querySubmit="onQuerySubmission" />
     </section>
   </div>
 </template>
@@ -152,6 +156,7 @@ export default {
   data: function() {
     return {
       documents: [],
+      firebaseInstanceId: this.$props.firebaseInstanceId,
       querySubmitted: false,
       status: {
         message: "",
@@ -208,14 +213,16 @@ export default {
         return;
       }
 
+      if(this.documents.length) {
+        this.$refs['shellRef'].reset();
+      }
+
       if(!docs) {
         this.setStatus("Query executed successfully - no results found.", true);
         return;
       }
 
       this.setStatus("Query executed successfully.", true);
-
-      console.log(docs);
 
       this.documents = docs;
     },
@@ -268,6 +275,14 @@ export default {
 
 .shell {
   height: $terminal-container-height;
+}
+
+.action-history {
+  position: absolute;
+  width: 100%;
+  height: 100px;
+  left: 0;
+  bottom: $terminal-container-height;
 }
 
 .background {
