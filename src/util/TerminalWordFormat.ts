@@ -17,6 +17,8 @@ let sqlWordFormatOptions: { [key: string]: WordOptions } = Object.values(KEYWORD
         case KEYWORDS.INTO:
         case KEYWORDS.BETWEEN:
         case KEYWORDS.DELETE:
+        case KEYWORDS.UPDATE:
+        case KEYWORDS.SET:
             options = {
                 color: "#c5ca1b"
             }
